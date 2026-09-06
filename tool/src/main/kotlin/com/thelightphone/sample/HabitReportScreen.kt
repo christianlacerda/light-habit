@@ -106,6 +106,26 @@ class HabitReportScreen(
     private val viewModel: HabitTrackerViewModel,
 ) : SimpleLightScreen<Unit>(sealedActivity) {
 
+    // Re-entering the tool starts at the week grid, not wherever you stopped. LightOS keeps
+    // the task alive, so without this, exiting from the report and tapping Ponto again lands
+    // back on the report — and the grid is what you open a habit tracker to do.
+    //
+    // Unguarded, and that is a deliberate trade rather than an oversight. onAppPause fires
+    // on screen-off as well as on leaving the tool, and a tool cannot tell the two apart:
+    // the honest discriminator is Activity.onUserLeaveHint, which lives in sdk/, and the
+    // sandbox blocks the fallbacks (PowerManager needs Context and getSystemService, both
+    // rejected by the SDK Gradle plugin). Elapsed-time heuristics do not help either, since
+    // exiting and immediately relaunching looks exactly like a brief screen timeout.
+    //
+    // So the cost is accepted here because it is bounded: this screen is read-only, so the
+    // worst case is that a display timeout returns you to the grid and you tap REPORT again.
+    // Contrast HomeScreen, where an onAppPause reset caused wrong *writes* (see its
+    // "Deliberately NO onAppPause reset" note), and AddHabitScreen, where it would discard
+    // typed input — both opt out for that reason.
+    override fun onAppPause() {
+        goBack()
+    }
+
     override fun willShow() {
         // A SimpleLightScreen never reaches LightViewModel.onScreenShow, so without this a
         // session left open across midnight would bucket today into yesterday's month.

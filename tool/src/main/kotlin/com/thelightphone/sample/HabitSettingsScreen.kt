@@ -48,6 +48,13 @@ class HabitSettingsScreen(
     private val viewModel: HabitTrackerViewModel,
 ) : SimpleLightScreen<Unit>(sealedActivity) {
 
+    // Pops on pause so re-entry starts at the week grid; see HabitReportScreen.onAppPause
+    // for why this is unguarded and why that is acceptable. Same reasoning applies: the
+    // week-start radio commits immediately, so there is no in-progress state to lose.
+    override fun onAppPause() {
+        goBack()
+    }
+
     @Composable
     override fun Content() {
         val themeColors by LightThemeController.colors.collectAsState()

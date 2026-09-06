@@ -20,20 +20,30 @@ import com.thelightphone.sdk.ui.LightThemeTokens
 
 /**
  * A habit name gets exactly one line in the week grid (see `HabitBlock` in
- * HomeScreen.kt, Detail text variant, ~23/27 grid-width columns available after
- * the screen's horizontal padding). Measured on-device rather than guessed:
- * with realistic mixed-case, space-separated names the line held up to ~49-51
- * characters before crowding the right edge and ~57 before Compose ellipsized
- * it; an adversarial all-caps string (e.g. 30x 'M', the widest glyph in the
- * font) ellipsized well before that, around 29 characters, because glyph width
- * varies per character and this is a character-count cap, not a pixel-width
- * one. 40 sits with comfortable margin under the realistic-text measurement
- * while staying well clear of the worst-case width. `HabitBlock` also sets
- * maxLines = 1 with TextOverflow.Ellipsis as a hard backstop, so even a name
- * that's unexpectedly wide degrades to an ellipsis instead of wrapping and
- * breaking the grid's SpaceEvenly layout.
+ * HomeScreen.kt, Paragraph text variant, ~23/27 grid-width columns available
+ * after the screen's horizontal padding).
+ *
+ * The original cap of 40 was measured on-device against the Detail variant
+ * (20sp): with realistic mixed-case, space-separated names the line held up to
+ * ~49-51 characters before crowding the right edge and ~57 before Compose
+ * ellipsized it; an adversarial all-caps string (e.g. 30x 'M', the widest glyph
+ * in the font) ellipsized well before that, around 29 characters, because glyph
+ * width varies per character and this is a character-count cap, not a
+ * pixel-width one.
+ *
+ * The label moved to Paragraph (24.5sp) for legibility, which is 1.225x wider
+ * per character, so the same margin now lands at 40 / 1.225 ~= 32. That figure
+ * is scaled arithmetically from the original measurement, NOT re-measured on
+ * hardware — if names start ellipsizing sooner than expected, re-measure rather
+ * than trusting this number. `HabitBlock` also sets maxLines = 1 with
+ * TextOverflow.Ellipsis as a hard backstop, so even a name that's unexpectedly
+ * wide degrades to an ellipsis instead of wrapping and breaking the grid's
+ * SpaceEvenly layout.
+ *
+ * Habits named before this change can exceed the cap; the cap only governs
+ * typing, and an over-long existing name ellipsizes rather than being truncated.
  */
-const val HABIT_NAME_MAX_LENGTH = 40
+const val HABIT_NAME_MAX_LENGTH = 32
 
 /**
  * Full-screen habit-naming flow, reached via `navigateTo` from [HomeScreen] — either from
@@ -59,6 +69,11 @@ class AddHabitScreen(
     private val submitLabel: String = "ADD",
 ) : SimpleLightScreen<String>(sealedActivity) {
 
+    // Deliberately NO onAppPause reset, unlike HabitReportScreen and HabitSettingsScreen.
+    // onAppPause cannot tell "left the tool" from "screen timed out" (see the note on
+    // HabitReportScreen.onAppPause), and on this screen guessing wrong destroys work: a
+    // name typed on the LP3 keyboard would vanish because the display went to sleep while
+    // the user was thinking. Resuming onto a half-typed name is the cheaper wrong answer.
     @Composable
     override fun Content() {
         val textState = rememberTextFieldState(initialName)

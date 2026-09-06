@@ -221,12 +221,24 @@ class HabitTrackerViewModel(
         clampWeekOffset()
     }
 
-    // Deliberately NO onAppPause reset. "Relaunching lands on the current week" already
-    // happens for free — the ViewModel dies with the process — whereas onAppPause fires
-    // on every screen-off too (LightActivity.onPause). Resetting there meant a backfill
-    // interrupted by a screen timeout silently returned to the current week, and since
-    // the day strip is geometrically identical between weeks, the next tap would write to
-    // today's cell instead of the intended one.
+    // Leaving the tool drops edit mode, but deliberately NOT the week offset. The split
+    // matters: onAppPause fires on every screen-off too (LightActivity.onPause), so
+    // everything reset here is also reset by a display timeout.
+    //
+    // Edit mode is safe to drop on that basis. Its only actions are Rename — which opens
+    // its own screen, and that screen keeps its own state — Archive, which is a single
+    // instant tap, and Delete, which does nothing unless confirmed. Nothing is ever in
+    // flight, so a mistimed reset costs one tap on the pencil to get back.
+    //
+    // The week offset is not safe to drop, and that is why this override touches only edit
+    // mode. Resetting the offset here meant a backfill interrupted by a screen timeout
+    // silently returned to the current week, and since the day strip is geometrically
+    // identical between weeks, the next tap wrote to today's cell instead of the intended
+    // one. "Relaunching lands on the current week" needs no help anyway — the ViewModel
+    // dies with the process.
+    override fun onAppPause() {
+        exitEditMode()
+    }
 
     // No onBackPressed override. LightViewModel.onBackPressed() is unreachable for a root
     // screen: the back dispatcher calls LightActivity.goBack() directly, which pops the

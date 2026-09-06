@@ -76,8 +76,11 @@ api --max-time 15 "$BASE/api/root" >/dev/null 2>&1 || {
 if (( BUILD )); then
     cp "$TOML" "$TOML.bak"
     trap 'mv -f "$TOML.bak" "$TOML" 2>/dev/null || true' EXIT
-    sed -i 's|^# *serverPackage = "com.lightos"|serverPackage = "com.lightos"|; \
-            s|^serverPackage = "com.thelightphone.sdk.emulator"|# serverPackage = "com.thelightphone.sdk.emulator"|' "$TOML"
+    # Two -e expressions, not one backslash-continued string: inside single quotes the
+    # continuation backslash survives into the sed script and reads as an address delimiter.
+    sed -i -e 's|^# *serverPackage = "com.lightos"|serverPackage = "com.lightos"|' \
+           -e 's|^serverPackage = "com.thelightphone.sdk.emulator"|# serverPackage = "com.thelightphone.sdk.emulator"|' \
+           "$TOML"
     grep -q '^serverPackage = "com.lightos"' "$TOML" || { echo "error: could not set serverPackage" >&2; exit 1; }
 
     echo "Building :tool for com.lightos ..."

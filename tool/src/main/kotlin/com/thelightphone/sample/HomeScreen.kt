@@ -852,7 +852,7 @@ private fun HabitBlock(
     Column(modifier = Modifier.fillMaxWidth()) {
         LightText(
             text = habit.name,
-            variant = LightTextVariant.Detail,
+            variant = LightTextVariant.Paragraph,
             // The grid allots exactly one line per habit name; a name that's somehow
             // longer than HABIT_NAME_MAX_LENGTH (shouldn't happen — the naming screen
             // enforces the cap while typing) degrades to an ellipsis instead of
@@ -949,7 +949,7 @@ private fun ArchivedHabitBlock(habit: Habit, onUnarchive: () -> Unit, onDelete: 
     Column(modifier = Modifier.fillMaxWidth()) {
         LightText(
             text = habit.name,
-            variant = LightTextVariant.Detail,
+            variant = LightTextVariant.Paragraph,
             lighten = true,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

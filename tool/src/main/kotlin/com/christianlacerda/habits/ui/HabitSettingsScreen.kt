@@ -26,32 +26,19 @@ import com.thelightphone.sdk.ui.gridUnitsAsDp
 import com.thelightphone.sdk.ui.lightClickable
 
 /**
- * Preferences, reached via the gear in [HomeScreen]'s resting bottom bar.
+ * Preferences, reached via the gear in [HomeScreen]'s bottom bar. Thin on purpose: habit
+ * management lives on the rows in [HomeScreen]'s edit mode, leaving one real preference.
  *
- * Everything about the *habits* — add, rename, archive, unarchive, delete — lives on the
- * habit rows in [HomeScreen]'s edit mode, including archived ones, which are listed below
- * the active habits there. What's left here is what that split leaves behind: preferences,
- * of which the tool has exactly one.
- *
- * A one-option settings screen is thin, and deliberately so. The alternative was keeping
- * content management here to pad it out, which is what made the report feel misfiled when
- * it lived behind this gear. The screen earns its place by holding the only thing that is
- * genuinely a preference, not by being full.
- *
- * Takes the same [HabitTrackerViewModel] instance the home screen uses (constructor
- * injection, same pattern as `AuthenticatorCodeScreen` sharing a repository) rather than
- * creating its own — [SimpleLightScreen] isn't a [com.thelightphone.sdk.LightScreen], so
- * it has no ViewModelStore of its own, and there's no reason to re-read DataStore into a
- * second, independent copy of the same state when one is already loaded and live.
+ * Takes the shared [HabitTrackerViewModel] by constructor — [SimpleLightScreen] has no
+ * ViewModelStore of its own, and the state is already loaded and live.
  */
 class HabitSettingsScreen(
     sealedActivity: SealedLightActivity,
     private val viewModel: HabitTrackerViewModel,
 ) : SimpleLightScreen<Unit>(sealedActivity) {
 
-    // Pops on pause so re-entry starts at the week grid; see HabitReportScreen.onAppPause
-    // for why this is unguarded and why that is acceptable. Same reasoning applies: the
-    // week-start radio commits immediately, so there is no in-progress state to lose.
+    // Re-entry starts at the week grid. Unguarded is safe here because the radio commits
+    // immediately, so a screen-off pause loses nothing — see HabitReportScreen.onAppPause.
     override fun onAppPause() {
         goBack()
     }
@@ -120,9 +107,7 @@ private fun SectionHeader(text: String) {
     )
 }
 
-/** One radio-style row per option; whichever matches the current preference shows a
- *  filled selection mark. Tapping either always resolves to a definite state (no
- *  "deselect" case) since exactly one of Sunday/Monday is always in effect. */
+/** One radio-style row per option. There is no deselect: one of Sunday/Monday always applies. */
 @Composable
 private fun WeekStartRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(

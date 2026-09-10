@@ -75,8 +75,7 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
         val canGoBack by viewModel.canGoBack.collectAsState()
         val canGoForward by viewModel.canGoForward.collectAsState()
         val activeHabits = remember(state) { state.habits.filter { it.archivedAt == null }.sortedBy { it.order } }
-        // Most recently archived first, so the one you just put away — overwhelmingly the
-        // one you'd want back — is the first archived row under the active list.
+        // Most recently archived first: the one you just put away is the one you'd want back.
         val archivedHabits = remember(state) {
             state.habits.filter { it.archivedAt != null }
                 .sortedWith(compareByDescending<Habit> { it.archivedAt }.thenByDescending { it.order })
@@ -86,10 +85,8 @@ class HomeScreen(sealedActivity: SealedLightActivity) :
         LightTheme(colors = themeColors) {
             val toDelete = pendingDelete
             if (toDelete != null) {
-                // Delete now sits one tap from Rename on the habit row itself, so it always
-                // asks — see HabitDeleteConfirmationContent. The prompt replaces this
-                // screen's content rather than pushing a screen, so answering it returns
-                // straight to the grid still in edit mode.
+                // Replaces this screen's content rather than pushing a screen, so answering
+                // returns straight to the grid, still in edit mode.
                 HabitDeleteConfirmationContent(
                     message = deleteConfirmationMessage(
                         habitName = toDelete.name,
@@ -302,17 +299,11 @@ private fun HabitTrackerScreen(
 
                         Spacer(modifier = Modifier.height(1.2f.verticalGridUnitsAsDp()))
 
-                        // Stacked from the top, with the leftover collecting at the bottom.
-                        //
-                        // Spreading the habits over the full height (Arrangement.SpaceEvenly)
-                        // has been tried twice and fails the same way both times: it looks
-                        // even at three habits, which is the maximum and not the common case,
-                        // and falls apart below that. At two it opens a chasm between the
-                        // rows; at one it strands a single habit in the middle of an empty
-                        // screen. The spare space at the bottom of a three-habit screen is
-                        // not dead space to reclaim — it's the room the third habit occupies
-                        // when the list is full, and leaving it empty is what keeps a row in
-                        // the same place whether you track one habit or three.
+                        // Stacked from the top, leftover collecting at the bottom. Do not
+                        // spread these with Arrangement.SpaceEvenly: it looks even only at
+                        // three habits, opens a chasm at two and strands one in mid-screen.
+                        // The bottom band is where the third habit goes, so leaving it empty
+                        // keeps a row in place whether you track one or three.
                         Column(
                             modifier = Modifier
                                 .weight(1f)
@@ -343,21 +334,12 @@ private fun HabitTrackerScreen(
                 }
             }
 
-            // Icon + text + icon in 3 slots hits LightBottomBar's mixed layout
-            // (SpaceBetween) — matches the Notes tool idiom. This is the ceiling: a text
-            // item caps the bar at 3 items, so there's no room for a 4th. The gear holds
-            // the left slot in both modes so only the two changing controls move.
+            // Icon + text + icon takes LightBottomBar's mixed layout, and a text item caps
+            // the bar at three slots. Ranked by frequency at rest: ticking needs no button,
+            // so REPORT takes the centre and editing steps back to a pencil.
             //
-            // What sits in the other two slots is a bet on frequency at rest. Ticking a
-            // day needs no button at all, so past the grid the recurring thing is looking
-            // at the trend; adding and editing are setup, done once and then rarely.
-            // Report therefore takes the centre, and editing steps back to a pencil.
-            //
-            // `+` only appears while editing. Adding and renaming/archiving/deleting are
-            // one job — managing habits — and splitting them across two slots left `+`
-            // on the resting screen doing nothing: at MAX_HABITS `requestAdd` can only
-            // raise a modal explaining itself. Inside edit mode that modal at least lands
-            // somewhere it can be acted on, with ARCHIVE already on every row.
+            // `+` appears only while editing — on the resting screen it did nothing at
+            // MAX_HABITS but raise a modal, which at least lands usefully next to ARCHIVE.
             LightBottomBar(
                 items = listOf(
                     // No gear while editing. Edit mode is about the habits in front of you;

@@ -48,15 +48,9 @@ import java.time.YearMonth
  *  came within a hair of the name above it and the two read as one clump. */
 private const val NAME_TO_PLOT_UNITS = 0.8f
 
-/**
- * Floor height for a month with at least one completion.
- *
- * One day in a 31-day month is ~3% of the plot, which at a true scale is a 2dp sliver that
- * reads as a thicker baseline — indistinguishable from a month where nothing happened. Four dp
- * overstates a single day slightly but keeps "once" visibly different from "never", and
- * confusing some with none is the worse of the two lies on a screen that exists to be read at
- * a glance.
- */
+/** Floor height for a month with at least one completion. At true scale one day in a month
+ *  is a 2dp sliver indistinguishable from none; 4dp overstates it slightly, which is the
+ *  better of the two lies. */
 private val MIN_VISIBLE_BAR = 4.dp
 
 /** [LightTopBar]'s own metrics, copied so [ReportPagingBar] lines up with every other
@@ -73,40 +67,27 @@ private const val DISABLED_CHEVRON_ALPHA = 0.3f
 /**
  * Monthly trend report, reached from REPORT in [HomeScreen]'s bottom bar.
  *
- * One line per habit, a vertical bar per month, no numbers anywhere. The question it answers
- * is "more or less than before", not "how many" — counting invites the scoreboard reading the
- * tool deliberately avoids (see the no-streaks decision). Bar *height* carries the whole
- * signal, and the shape of the bars is what identifies the screen, so it carries no title.
+ * One line per habit, a bar per month, no numbers: the question is "more or less than
+ * before", not "how many". Bar height carries the whole signal, and the bars identify the
+ * screen, so it has no title.
  *
- * Active habits only. An archived habit's history is preserved and still reachable — unarchive
- * it from [HomeScreen]'s edit mode and it reappears here — but showing archived lines meant a
- * scrollable screen, and the scrollbar cost horizontal room and made a screen whose whole job
- * is legibility look busy.
- *
- * Shares the one [HabitTrackerViewModel] rather than loading its own copy — the state is
- * already live and there is nothing to persist here. This screen is read-only.
+ * Active habits only — archived history is preserved and returns on unarchive, but drawing
+ * it needed a scrollbar, which cost horizontal room on a screen that exists to be legible.
+ * Read-only, and shares the one [HabitTrackerViewModel].
  */
 class HabitReportScreen(
     sealedActivity: SealedLightActivity,
     private val viewModel: HabitTrackerViewModel,
 ) : SimpleLightScreen<Unit>(sealedActivity) {
 
-    // Re-entering the tool starts at the week grid, not wherever you stopped. LightOS keeps
-    // the task alive, so without this, exiting from the report and tapping Habits again lands
-    // back on the report — and the grid is what you open a habit tracker to do.
+    // Re-entry starts at the week grid: LightOS keeps the task alive, so without this,
+    // reopening Habits lands back on the report.
     //
-    // Unguarded, and that is a deliberate trade rather than an oversight. onAppPause fires
-    // on screen-off as well as on leaving the tool, and a tool cannot tell the two apart:
-    // the honest discriminator is Activity.onUserLeaveHint, which lives in sdk/, and the
-    // sandbox blocks the fallbacks (PowerManager needs Context and getSystemService, both
-    // rejected by the SDK Gradle plugin). Elapsed-time heuristics do not help either, since
-    // exiting and immediately relaunching looks exactly like a brief screen timeout.
-    //
-    // So the cost is accepted here because it is bounded: this screen is read-only, so the
-    // worst case is that a display timeout returns you to the grid and you tap REPORT again.
-    // Contrast HomeScreen, where an onAppPause reset caused wrong *writes* (see its
-    // "Deliberately NO onAppPause reset" note), and AddHabitScreen, where it would discard
-    // typed input — both opt out for that reason.
+    // Unguarded on purpose. onAppPause also fires on screen-off and a tool cannot tell the
+    // two apart — onUserLeaveHint lives in sdk/, and the sandbox blocks every fallback. The
+    // cost is bounded here because the screen is read-only: at worst a timeout returns you
+    // to the grid. HomeScreen and AddHabitScreen opt out, where guessing wrong would cost
+    // a wrong write or typed input.
     override fun onAppPause() {
         goBack()
     }
@@ -184,22 +165,13 @@ class HabitReportScreen(
                     // Same 1.2u the home screen puts below its top bar.
                     Spacer(modifier = Modifier.height(1.2f.verticalGridUnitsAsDp()))
 
-                    // Always at least MAX_HABITS slots, each an equal share of whatever
-                    // height is actually left. A fixed per-block budget in grid units was
-                    // wrong on two counts: verticalGridUnitsAsDp divides
-                    // Configuration.screenHeightDp by 31, and that is not the window this
-                    // screen is drawn into (400dp against a 472dp window on the emulator),
-                    // while the two text lines in a block are sp-sized and so grow with the
-                    // font scale without any unit being spent on them. The old budget fitted
-                    // only because that mismatch happened to leave 61px spare; where it does
-                    // not, the Column hands the last block what remains, its chart absorbs
-                    // all of it, and the baseline and month axis are measured at zero — the
-                    // last habit loses precisely the parts that say which months its bars are.
+                    // Equal shares of the height actually available — never a fixed budget
+                    // in grid units. verticalGridUnitsAsDp divides screenHeightDp, not the
+                    // window this is drawn into, and the text lines are sp-sized, so a fixed
+                    // budget overflows and the last habit loses its baseline and month axis.
                     //
-                    // Reserving every slot regardless of habit count is the home screen's
-                    // rule: a habit keeps its place whether you track one or three, and the
-                    // band below is where the third one goes. maxOf guards the cap itself, so
-                    // a fourth active habit would be drawn small rather than not at all.
+                    // Every slot is reserved regardless of habit count, so a habit keeps its
+                    // place whether you track one or three. maxOf guards the cap itself.
                     repeat(maxOf(MAX_HABITS, habits.size)) { index ->
                         val habit = habits.getOrNull(index)
                         if (habit == null) {
@@ -231,17 +203,13 @@ class HabitReportScreen(
 /**
  * The report's own top bar, hand-built to [LightTopBar]'s metrics rather than using it.
  *
- * Both chevrons are always drawn, dimmed when there's nowhere to go. That costs a custom
- * bar because [LightBarButton] has no disabled state — its buttons are either present at
- * full strength or absent — and absence is the one thing that can't happen here. A lone
- * `‹` in the top-left slot is the universal back affordance; on a screen that leaves by a
- * Close button at the bottom, showing it only when paging is available would read as "go
- * back" and mean "go back six months". Keeping both anchored means a chevron's position
- * always says what it does and only its weight says whether it can.
+ * Both chevrons are always drawn, dimmed when there's nowhere to go — [LightBarButton] has
+ * no disabled state, and a lone `‹` would read as "back" while meaning "back six months".
+ * Position says what a chevron does; weight says whether it can.
  *
- * Everything here mirrors [LightTopBar]: 3u tall, 1u side padding, [LightTextVariant.Fine]
- * for the label, [LightBarButtonDefaults.ICON_SIZE_UNITS] icons — so it sits at the same
- * height and reads as the same furniture as every other screen's bar.
+ * Mirrors [LightTopBar]'s metrics — 3u tall, 1u padding, [LightTextVariant.Fine] label,
+ * [LightBarButtonDefaults.ICON_SIZE_UNITS] icons — so it sits at the same height as every
+ * other screen's bar.
  */
 @Composable
 private fun ReportPagingBar(

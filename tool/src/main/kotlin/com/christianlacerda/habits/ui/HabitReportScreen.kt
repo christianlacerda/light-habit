@@ -25,10 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.christianlacerda.habits.model.Habit
-import com.christianlacerda.habits.model.HabitState
 import com.christianlacerda.habits.model.MAX_HABITS
-import com.christianlacerda.habits.model.snappedToWeekStart
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import com.thelightphone.sdk.ui.LightBarButton
@@ -45,14 +42,7 @@ import com.thelightphone.sdk.ui.LightThemeTokens
 import com.thelightphone.sdk.ui.gridUnitsAsDp
 import com.thelightphone.sdk.ui.lightClickable
 import com.thelightphone.sdk.ui.verticalGridUnitsAsDp
-import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-
-/** Months shown at once. Six is what lets a bar stay [DAY_CELL_UNITS] wide — at twelve the
- *  columns fall to ~1.9u and the bars stop matching the day cells they are meant to echo. */
-private const val REPORT_MONTHS = 6
 
 /** Gap between a habit's name and the top of its plot. At the old 0.3u a bar at full height
  *  came within a hair of the name above it and the two read as one clump. */
@@ -69,12 +59,11 @@ private const val NAME_TO_PLOT_UNITS = 0.8f
  */
 private val MIN_VISIBLE_BAR = 4.dp
 
-private val MONTH_LABEL_FORMAT = DateTimeFormatter.ofPattern("MMM")
-
 /** [LightTopBar]'s own metrics, copied so [ReportPagingBar] lines up with every other
  *  screen's bar. Kept private here rather than shared — they mirror SDK internals, and the
  *  only honest way to keep them in step is to notice if the SDK's bar ever moves. */
 private const val PAGING_BAR_HEIGHT_UNITS = 3f
+
 private const val PAGING_BAR_PADDING_UNITS = 1f
 
 /** Visible enough to hold its position and stay recognisable as a chevron, faint enough
@@ -236,95 +225,6 @@ class HabitReportScreen(
                 )
             }
         }
-    }
-}
-
-/**
- * One month's column for one habit.
- *
- * [fraction] is the share of *trackable* days completed, not of calendar days: a habit created
- * on the 20th is only answerable for the days it actually existed. Dividing by the full month
- * instead would draw a permanent dip at the start of a habit's life that says nothing about
- * the person.
- */
-private data class MonthBar(
-    val month: YearMonth,
-    val fraction: Float,
-    /** False when the habit did not exist at all that month — an empty column, not a zero. */
-    val trackable: Boolean,
-    /** The month still running. Drawn hollow, and scaled by days elapsed (see [monthBars]). */
-    val inProgress: Boolean,
-)
-
-private fun monthWindow(currentMonth: YearMonth, offset: Int): List<YearMonth> {
-    val anchor = currentMonth.plusMonths(offset.toLong() * REPORT_MONTHS)
-    return (REPORT_MONTHS - 1 downTo 0).map { anchor.minusMonths(it.toLong()) }
-}
-
-private fun earliestHabitMonth(habits: List<Habit>, fallback: YearMonth): YearMonth =
-    habits.minOfOrNull { it.createdAt }
-        ?.let { YearMonth.from(LocalDate.ofEpochDay(it)) }
-        ?: fallback
-
-/**
- * Most negative window offset that still shows the first recorded month.
- *
- * Derived from where the record starts rather than fixed, so `‹` stops at the edge of real
- * data instead of walking back through empty windows. Solving `windowStart <= earliest` for
- * the offset gives `floor((REPORT_MONTHS - 1 - span) / REPORT_MONTHS)`.
- */
-private fun minWindowOffset(earliest: YearMonth, current: YearMonth): Int {
-    val span = ChronoUnit.MONTHS.between(earliest, current).toInt()
-    return Math.floorDiv(REPORT_MONTHS - 1 - span, REPORT_MONTHS).coerceAtMost(0)
-}
-
-private fun monthBars(
-    habit: Habit,
-    state: HabitState,
-    window: List<YearMonth>,
-    today: LocalDate,
-): List<MonthBar> {
-    val completions = state.completions[habit.id].orEmpty()
-    val currentMonth = YearMonth.from(today)
-
-    // Completions may legitimately predate createdAt within the creation week — the home grid
-    // gates tracking at week granularity so day one is usable. Snapping the lower bound the
-    // same way keeps those days inside the denominator instead of pushing a fraction over 1.
-    val firstTrackable = LocalDate.ofEpochDay(habit.createdAt).snappedToWeekStart(state.weekStart)
-
-    return window.map { month ->
-        val from = maxOf(month.atDay(1), firstTrackable)
-        // An in-progress month is measured against the days elapsed so far, so mid-August
-        // compares fairly with a finished July instead of reading as a collapse all month.
-        val to = minOf(month.atEndOfMonth(), today)
-
-        if (to < from) {
-            MonthBar(month, fraction = 0f, trackable = false, inProgress = month == currentMonth)
-        } else {
-            val possible = ChronoUnit.DAYS.between(from, to).toInt() + 1
-            val done = completions.count { it in from.toEpochDay()..to.toEpochDay() }
-            MonthBar(
-                month = month,
-                fraction = (done.toFloat() / possible).coerceIn(0f, 1f),
-                trackable = true,
-                inProgress = month == currentMonth,
-            )
-        }
-    }
-}
-
-private fun windowLabel(window: List<YearMonth>): String {
-    val first = window.first()
-    val last = window.last()
-    val firstLabel = first.format(MONTH_LABEL_FORMAT).uppercase()
-    val lastLabel = last.format(MONTH_LABEL_FORMAT).uppercase()
-    // Year shown once when the window sits inside one year, on both ends when it straddles —
-    // six months back from January is a different year, and an unqualified "AUG" there would
-    // be read as this year's.
-    return if (first.year == last.year) {
-        "$firstLabel – $lastLabel ${last.year}"
-    } else {
-        "$firstLabel ${first.year} – $lastLabel ${last.year}"
     }
 }
 

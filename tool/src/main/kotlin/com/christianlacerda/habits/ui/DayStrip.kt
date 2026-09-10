@@ -45,12 +45,8 @@ private fun dayLetterFor(dayOfWeek: DayOfWeek): String = when (dayOfWeek) {
  *  week strip rather than a chart bolted on. */
 internal const val DAY_CELL_UNITS = 2.3f
 
-/**
- * How far a pre-creation day's border fades below `contentSecondary`, which future days
- * already use. Alpha rather than a third palette colour: the theme has exactly two content
- * tones, and fading the dimmer of them lands a step further back in both light and dark
- * without inventing a colour that would have to be defined twice.
- */
+/** How far a pre-creation day's border fades below `contentSecondary`. Alpha rather than a
+ *  third colour: the theme has two content tones, and fading one works in both schemes. */
 private const val BEFORE_HABIT_BORDER_ALPHA = 0.45f
 
 @Composable
@@ -91,25 +87,14 @@ internal enum class DayCellState {
 }
 
 /**
- * A single day's check box. Filled = done, outlined = not done — both are neutral;
- * there's no "streak broken" styling for a miss. Today gets a separate outer ring
- * with a visible gap from the box itself, so the emphasis reads in monochrome even
- * when the box is filled (a same-color thicker border on a filled square would be
- * invisible against its own fill).
+ * A single day's check box. Filled = done, outlined = not done, both neutral — a miss gets
+ * no "streak broken" styling. Today adds a separate outer ring with a gap, since a thicker
+ * same-colour border would vanish against a filled square.
  *
- * The three states are three weights of the same square, not three different things. A
- * [DayCellState.FUTURE] day is dimmed to `contentSecondary`; a [DayCellState.BEFORE_HABIT]
- * day is fainter still, [BEFORE_HABIT_BORDER_ALPHA] of that. Drawing those two identically
- * is what made a newly added habit look broken — page back a week and its untappable cells
- * were indistinguishable from unreachable future ones, with nothing saying why.
- *
- * Omitting the pre-creation square altogether was tried and reads as a rendering failure
- * rather than a statement: a row that simply stops has no way to say whether it means "not
- * applicable" or "failed to draw". Keeping the square and receding it says the days are
- * there and not yours to fill, which is the actual situation.
- *
- * Edit mode needs no muted variant of this: the strip isn't drawn at all while editing
- * (see [HabitBlock]), so there is no inert grid on screen for a tap to look live against.
+ * The three states are three weights of one square: [DayCellState.FUTURE] dimmed to
+ * `contentSecondary`, [DayCellState.BEFORE_HABIT] fainter still. Drawing those two alike
+ * made a newly added habit look broken, and omitting the pre-creation square entirely read
+ * as a failure to draw rather than as a statement.
  */
 @Composable
 internal fun DayCheckbox(
@@ -121,8 +106,7 @@ internal fun DayCheckbox(
     val colors = LightThemeTokens.colors
     val cellSize = DAY_CELL_UNITS.gridUnitsAsDp()
     val haloSize = cellSize + 10.dp
-    // Hit area only. The halo stays at its drawn size so raising the target doesn't inflate
-    // the today ring along with it — 45dp of drawn halo, 48dp of tappable box around it.
+    // Hit area only — the halo keeps its drawn size, so the today ring doesn't inflate.
     val touchSize = maxOf(haloSize, MIN_TOUCH_TARGET)
 
     Box(
@@ -159,8 +143,7 @@ internal fun DayCheckbox(
                             colors.contentSecondary.copy(alpha = BEFORE_HABIT_BORDER_ALPHA)
                     },
                 )
-                // A pre-creation day is never filled: toggling is gated to TRACKABLE, so
-                // there is no path to a completion before the habit's creation week.
+                // Never filled before creation: toggling is gated to TRACKABLE.
                 .background(if (filled) colors.content else Color.Transparent),
         )
     }

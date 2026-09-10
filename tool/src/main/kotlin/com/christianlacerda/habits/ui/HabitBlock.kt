@@ -31,27 +31,17 @@ import java.time.LocalDate
  * pinned in both modes so toggling edit never shifts the grid.
  */
 
-/**
- * Android's minimum touch target. Deliberately a raw dp rather than a grid unit: it is an
- * ergonomic floor tied to fingertip size, so it must stay 48dp however the 27x31 design grid
- * happens to map onto the device. A day cell's column is (27 - 2*2)/7 = 3.29u, about 50dp on
- * an LP3, so this fits with roughly a dp of clearance either side and adjacent cells never
- * overlap.
- */
+/** Android's minimum touch target. A raw dp, not a grid unit — it is tied to fingertip size,
+ *  so it must stay 48dp however the 27x31 grid maps onto the device. A day column is 3.29u,
+ *  about 50dp on an LP3, so cells never overlap. */
 internal val MIN_TOUCH_TARGET = 48.dp
 
 /**
- * Not editing: the habit's name over its 7-day strip, cells individually tappable.
+ * At rest: the habit's name over its tappable 7-day strip. Editing: the same name, with the
+ * strip swapped for RENAME / ARCHIVE / DELETE, so managing a habit costs no extra screen.
  *
- * Editing: the same name in the same place, with the strip swapped in place for the
- * habit's three management actions. The strip is inert in edit mode anyway — dimmed,
- * unclickable, present only to hold the layout — so the row's lower half is spent on
- * decoration. Putting Rename/Archive/Delete there instead costs no extra screen and no
- * extra tap, and every habit's actions are visible at once.
- *
- * The action row is deliberately [MIN_TOUCH_TARGET] tall, the same height the day strip
- * occupies, so a row's total height is identical in both modes and toggling edit doesn't
- * shift the grid vertically.
+ * The action row is [MIN_TOUCH_TARGET] tall — the strip's height — so toggling edit mode
+ * never shifts the grid.
  */
 @Composable
 internal fun HabitBlock(
@@ -71,10 +61,8 @@ internal fun HabitBlock(
         LightText(
             text = habit.name,
             variant = LightTextVariant.Paragraph,
-            // The grid allots exactly one line per habit name; a name that's somehow
-            // longer than HABIT_NAME_MAX_LENGTH (shouldn't happen — the naming screen
-            // enforces the cap while typing) degrades to an ellipsis instead of
-            // wrapping and breaking the layout below it.
+            // One line per name. A name past HABIT_NAME_MAX_LENGTH ellipsizes rather
+            // than wrapping and breaking the layout below.
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
@@ -92,9 +80,8 @@ internal fun HabitBlock(
             Row(modifier = Modifier.fillMaxWidth()) {
                 for (dayIndex in 0..6) {
                     val epochDay = weekStart.plusDays(dayIndex.toLong()).toEpochDay()
-                    // Both ends are out of range, but for opposite reasons, and the cell
-                    // says which: a future day is one you can't tick *yet*, a pre-creation
-                    // day is one there was never anything to tick.
+                    // Out of range at both ends, for opposite reasons: a future day can't
+                    // be ticked *yet*, a pre-creation day never could.
                     val state = when {
                         epochDay < startWeekEpoch -> DayCellState.BEFORE_HABIT
                         epochDay > todayEpoch -> DayCellState.FUTURE
@@ -151,16 +138,9 @@ internal fun HabitSeparator(editMode: Boolean) {
 /**
  * An archived habit, listed below the active ones while editing.
  *
- * Same shape as an active row — name over a right-clustered action row — so the list reads
- * as one list. What separates the two is the row itself: a dimmed name over UNARCHIVE
- * against a full-strength name over RENAME/ARCHIVE. That contrast is the whole signal,
- * which is why the section carries no heading; a label set like a habit name only read as
- * one more habit.
- *
- * Two actions, not three: there's nothing to rename on something you aren't tracking, and
- * nothing to archive on something already archived. DELETE stays rightmost, the same place
- * it sits on an active row, so the destructive action is in one position throughout the
- * list rather than moving depending on which kind of row you're on.
+ * Same shape as an active row, so the list reads as one list; the dimmed name over two
+ * actions is the whole signal, which is why the section has no heading. Two actions, not
+ * three — nothing to rename or archive here. DELETE stays rightmost throughout the list.
  */
 @Composable
 internal fun ArchivedHabitBlock(habit: Habit, onUnarchive: () -> Unit, onDelete: () -> Unit) {
@@ -193,18 +173,11 @@ private data class HabitActionSpec(
 /**
  * A habit's management actions, occupying the band the day strip would otherwise fill.
  *
- * Clustered against the right rather than spread across the width: the habit name owns the
- * left of the row, so ending the actions on one vertical edge reads better than starting
- * them at unrelated places. Editing reserves a gutter for the scroll bar (see the
- * LightScrollView call in HabitTrackerScreen), so that edge can sit flush against the
- * content without a bar ever landing on top of DELETE.
+ * Clustered right, since the name owns the left. Edit mode reserves a scroll-bar gutter, so
+ * the edge sits flush without a bar landing on DELETE.
  *
- * Underlined [LightTextVariant.Detail] keeps the actions from out-shouting the habit name,
- * which is set at the same size.
- *
- * The row is pinned to [MIN_TOUCH_TARGET], which is also what the day strip occupies, so a
- * habit's total height doesn't change when edit mode toggles. Each action fills that full
- * height, so its target is the band around the word, not just the glyphs.
+ * Pinned to [MIN_TOUCH_TARGET] — the day strip's height — so toggling edit shifts nothing,
+ * and each action fills it, making the target the band rather than the glyphs.
  */
 @Composable
 private fun HabitActionRow(vararg actions: HabitActionSpec) {

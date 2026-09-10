@@ -19,48 +19,22 @@ import com.thelightphone.sdk.ui.LightThemeController
 import com.thelightphone.sdk.ui.LightThemeTokens
 
 /**
- * A habit name gets exactly one line in the week grid (see `HabitBlock` in
- * HomeScreen.kt, Paragraph text variant, ~23/27 grid-width columns available
- * after the screen's horizontal padding).
- *
- * The original cap of 40 was measured on-device against the Detail variant
- * (20sp): with realistic mixed-case, space-separated names the line held up to
- * ~49-51 characters before crowding the right edge and ~57 before Compose
- * ellipsized it; an adversarial all-caps string (e.g. 30x 'M', the widest glyph
- * in the font) ellipsized well before that, around 29 characters, because glyph
- * width varies per character and this is a character-count cap, not a
- * pixel-width one.
- *
- * The label moved to Paragraph (24.5sp) for legibility, which is 1.225x wider
- * per character, so the same margin now lands at 40 / 1.225 ~= 32. That figure
- * is scaled arithmetically from the original measurement, NOT re-measured on
- * hardware — if names start ellipsizing sooner than expected, re-measure rather
- * than trusting this number. `HabitBlock` also sets maxLines = 1 with
- * TextOverflow.Ellipsis as a hard backstop, so even a name that's unexpectedly
- * wide degrades to an ellipsis instead of wrapping and breaking the grid's
- * SpaceEvenly layout.
- *
- * Habits named before this change can exceed the cap; the cap only governs
- * typing, and an over-long existing name ellipsizes rather than being truncated.
+ * A habit name gets one line in the week grid. 32 is scaled arithmetically from a cap of
+ * 40 measured on-device against the smaller Detail variant, never re-measured against
+ * Paragraph — if names ellipsize sooner than expected, measure rather than trust it.
+ * [HabitBlock] ellipsizes as a backstop, and older names may exceed the cap since it only
+ * governs typing.
  */
 const val HABIT_NAME_MAX_LENGTH = 32
 
 /**
- * Full-screen habit-naming flow, reached via `navigateTo` from [HomeScreen] — either from
- * the bottom bar's `+` (add) or from a habit row's Rename action in edit mode (same
- * keyboard/validation flow, just pre-filled with the existing name and different
- * title/submit copy).
+ * Names a habit, for both add and rename — the same flow, pre-filled and relabelled.
  *
- * A separate screen (rather than a modal) because naming needs the LP3 keyboard,
- * which is itself a full-screen affair (top bar + input + embedded keyboard +
- * bottom bar) - [com.thelightphone.sdk.ui.LightFullscreenModal] has no slot for
- * a keyboard or a text field, so there's no meaningful "modal" version of this.
- * See the milestone 3 report for the full modal-vs-screen writeup.
+ * A screen rather than a modal because naming needs the LP3 keyboard, and
+ * [com.thelightphone.sdk.ui.LightFullscreenModal] has no slot for a keyboard or a field.
  *
- * Returns the trimmed name via `goBack(name)` on submit, or no result on cancel
- * (back button/gesture) - the SDK's back-stack only invokes the caller's result
- * callback when a non-null result was set, so a plain `goBack()` is enough to
- * signal "nothing changed."
+ * Returns the trimmed name via `goBack(name)`, or nothing on cancel — the back-stack only
+ * invokes the caller's callback when a result was set.
  */
 class AddHabitScreen(
     sealedActivity: SealedLightActivity,
@@ -69,19 +43,15 @@ class AddHabitScreen(
     private val submitLabel: String = "ADD",
 ) : SimpleLightScreen<String>(sealedActivity) {
 
-    // Deliberately NO onAppPause reset, unlike HabitReportScreen and HabitSettingsScreen.
-    // onAppPause cannot tell "left the tool" from "screen timed out" (see the note on
-    // HabitReportScreen.onAppPause), and on this screen guessing wrong destroys work: a
-    // name typed on the LP3 keyboard would vanish because the display went to sleep while
-    // the user was thinking. Resuming onto a half-typed name is the cheaper wrong answer.
+    // Deliberately NO onAppPause reset: it also fires on screen-off, and here that would
+    // discard a half-typed name. Resuming onto one is the cheaper wrong answer.
     @Composable
     override fun Content() {
         val textState = rememberTextFieldState(initialName)
         val themeColors by LightThemeController.colors.collectAsState()
         val keyboardOptionsFlow = rememberKeyboardOptions()
 
-        // Truncate as-you-type rather than only validating on submit, so the field
-        // never shows you typing past the point the grid can actually display.
+        // Truncate as-you-type, so the field never shows more than the grid can display.
         LaunchedEffect(textState) {
             snapshotFlow { textState.text.toString() }.collect { current ->
                 if (current.length > HABIT_NAME_MAX_LENGTH) {
@@ -102,9 +72,7 @@ class AddHabitScreen(
                 submitLabel = submitLabel,
                 onSubmit = { text ->
                     val trimmed = text.toString().trim()
-                    // Reject empty/whitespace-only names by simply not returning -
-                    // there's no error-message slot in LightTextInputEditor, so this
-                    // is a silent no-op rather than a validation message. See report.
+                    // Silent no-op on an empty name: LightTextInputEditor has no error slot.
                     if (trimmed.isNotEmpty()) {
                         goBack(trimmed)
                     }

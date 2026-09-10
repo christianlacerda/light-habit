@@ -18,14 +18,9 @@ import com.thelightphone.sdk.ui.LightThemeTokens
 import com.thelightphone.sdk.ui.gridUnitsAsDp
 
 /**
- * A plain "are you sure?" gets tapped through reflexively. Naming what's actually lost
- * makes the confirmation informative instead of ceremonial — so whenever there is history
- * to lose, this states how many days go with it.
- *
- * A habit with no completions loses nothing, and padding the question with "0 days will be
- * erased" would only make it read like boilerplate. It still asks, though: on the grid,
- * DELETE sits one tap away from RENAME, close enough that a mis-tap on a habit you just
- * created and mistyped is a realistic way to lose it on a device with no undo.
+ * Names what is lost — a plain "are you sure?" gets tapped through reflexively. A habit
+ * with no completions omits the day count rather than saying "0 days", but still asks:
+ * DELETE sits one tap from RENAME, on a device with no undo.
  */
 internal fun deleteConfirmationMessage(habitName: String, completionCount: Int): String {
     if (completionCount == 0) return "Delete “$habitName”?"
@@ -34,12 +29,9 @@ internal fun deleteConfirmationMessage(habitName: String, completionCount: Int):
 }
 
 /**
- * Inline (not a navigation-stack screen, not [com.thelightphone.sdk.ui.LightFullscreenModal])
- * two-choice delete confirmation — a fullscreen modal only has room for a message and a
- * single close button, and this needs two: cancel and confirm. Swapping the screen's own
- * content is the simplest way to get a two-choice prompt out of the primitives available.
- * Used by [HomeScreen], which is where every delete now starts — active and archived
- * habits alike are deleted from the grid's edit mode.
+ * Inline two-choice confirmation, swapped in over [HomeScreen]'s content.
+ * [com.thelightphone.sdk.ui.LightFullscreenModal] has room for one close button; this needs
+ * cancel and confirm.
  */
 @Composable
 internal fun HabitDeleteConfirmationContent(message: String, onCancel: () -> Unit, onConfirm: () -> Unit) {

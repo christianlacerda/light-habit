@@ -1,4 +1,4 @@
-package com.christianlacerda.habits
+package com.christianlacerda.habits.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +25,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.christianlacerda.habits.model.Habit
+import com.christianlacerda.habits.model.HabitState
+import com.christianlacerda.habits.model.MAX_HABITS
+import com.christianlacerda.habits.model.snappedToWeekStart
 import com.thelightphone.sdk.SealedLightActivity
 import com.thelightphone.sdk.SimpleLightScreen
 import com.thelightphone.sdk.ui.LightBarButton

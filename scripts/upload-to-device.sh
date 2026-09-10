@@ -40,7 +40,7 @@ RAW_URL="${1:-}"
 TOML="tool/lighttool.toml"
 APK="tool/build/outputs/apk/debug/tool-debug.apk"
 CA_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/light-toolmanager-ca.pem"
-REMOTE_NAME="ponto.apk"
+REMOTE_NAME="habits.apk"
 INBOX="Tool%20Inbox"
 
 # ---- parse the URL -------------------------------------------------------
@@ -140,7 +140,7 @@ echo -n "Waiting for the installer to consume it "
 for _ in $(seq 1 30); do
     sleep 5
     if ! listing | grep -q "\"$REMOTE_NAME\""; then
-        echo; echo "Installed. Launch Ponto from the Toolbox."
+        echo; echo "Installed. Launch Habits from the Toolbox."
         echo "(No status endpoint exists — consumption means accepted, not verified.)"
         exit 0
     fi

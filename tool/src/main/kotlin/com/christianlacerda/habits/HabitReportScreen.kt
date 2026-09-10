@@ -1,4 +1,4 @@
-package com.thelightphone.sample
+package com.christianlacerda.habits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -99,7 +99,7 @@ class HabitReportScreen(
 ) : SimpleLightScreen<Unit>(sealedActivity) {
 
     // Re-entering the tool starts at the week grid, not wherever you stopped. LightOS keeps
-    // the task alive, so without this, exiting from the report and tapping Ponto again lands
+    // the task alive, so without this, exiting from the report and tapping Habits again lands
     // back on the report — and the grid is what you open a habit tracker to do.
     //
     // Unguarded, and that is a deliberate trade rather than an oversight. onAppPause fires

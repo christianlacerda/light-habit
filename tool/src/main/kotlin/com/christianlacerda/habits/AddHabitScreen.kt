@@ -1,4 +1,4 @@
-package com.thelightphone.sample
+package com.christianlacerda.habits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.input.delete

@@ -1,6 +1,6 @@
 [tool]
-id = "com.christianlacerda.ponto"
-label = "Ponto"
+id = "com.christianlacerda.habits"
+label = "Habits"
 versionCode = 1
 versionName = "1.0.0"
 permissions = []

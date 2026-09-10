@@ -1,4 +1,4 @@
-package com.thelightphone.sample
+package com.christianlacerda.habits
 
 import android.util.Log
 import com.thelightphone.sdk.EntryPoint

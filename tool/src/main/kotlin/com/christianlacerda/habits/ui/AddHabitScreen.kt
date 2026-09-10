@@ -1,4 +1,4 @@
-package com.christianlacerda.habits
+package com.christianlacerda.habits.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.input.delete

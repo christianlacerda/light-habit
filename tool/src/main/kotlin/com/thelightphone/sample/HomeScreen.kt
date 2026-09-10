@@ -135,8 +135,10 @@ private fun dayLetterFor(dayOfWeek: DayOfWeek): String = when (dayOfWeek) {
     DayOfWeek.SATURDAY -> "S"
 }
 
-/** Hard cap on the number of *active* habits that can exist at once. Archived habits don't count. */
-private const val MAX_HABITS = 3
+/** Hard cap on the number of *active* habits that can exist at once. Archived habits don't count.
+ *  Also the number of slots [HabitReportScreen] divides its plot area into, so a habit's trend
+ *  sits at the same height there as its week strip does here. */
+internal const val MAX_HABITS = 3
 
 /** Width of a day checkbox, in grid units. Also the width of a month bar in
  *  [HabitReportScreen], so the report's columns read as the same instrument as the

@@ -3,6 +3,7 @@ package com.thelightphone.sample
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,15 +49,6 @@ import java.time.temporal.ChronoUnit
 /** Months shown at once. Six is what lets a bar stay [DAY_CELL_UNITS] wide — at twelve the
  *  columns fall to ~1.9u and the bars stop matching the day cells they are meant to echo. */
 private const val REPORT_MONTHS = 6
-
-/**
- * Height of the plot area.
- *
- * Budget: 31u total, less 3u of top bar and 5u of bottom bar (4u plus its 1u margin) leaves
- * 23u for three blocks and the band below the bar. A block is its name, this plot, a baseline
- * and a month axis, so the plot is what gives way when the Close button takes its 5u.
- */
-private const val CHART_HEIGHT_UNITS = 4.3f
 
 /** Gap between a habit's name and the top of its plot. At the old 0.3u a bar at full height
  *  came within a hair of the name above it and the two read as one clump. */
@@ -199,12 +191,34 @@ class HabitReportScreen(
                     // Same 1.2u the home screen puts below its top bar.
                     Spacer(modifier = Modifier.height(1.2f.verticalGridUnitsAsDp()))
 
-                    habits.forEach { habit ->
-                        HabitTrendBlock(
-                            bars = monthBars(habit, state, window, today),
-                            name = habit.name,
-                            currentMonth = currentMonth,
-                        )
+                    // Always at least MAX_HABITS slots, each an equal share of whatever
+                    // height is actually left. A fixed per-block budget in grid units was
+                    // wrong on two counts: verticalGridUnitsAsDp divides
+                    // Configuration.screenHeightDp by 31, and that is not the window this
+                    // screen is drawn into (400dp against a 472dp window on the emulator),
+                    // while the two text lines in a block are sp-sized and so grow with the
+                    // font scale without any unit being spent on them. The old budget fitted
+                    // only because that mismatch happened to leave 61px spare; where it does
+                    // not, the Column hands the last block what remains, its chart absorbs
+                    // all of it, and the baseline and month axis are measured at zero — the
+                    // last habit loses precisely the parts that say which months its bars are.
+                    //
+                    // Reserving every slot regardless of habit count is the home screen's
+                    // rule: a habit keeps its place whether you track one or three, and the
+                    // band below is where the third one goes. maxOf guards the cap itself, so
+                    // a fourth active habit would be drawn small rather than not at all.
+                    repeat(maxOf(MAX_HABITS, habits.size)) { index ->
+                        val habit = habits.getOrNull(index)
+                        if (habit == null) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            HabitTrendBlock(
+                                bars = monthBars(habit, state, window, today),
+                                name = habit.name,
+                                currentMonth = currentMonth,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
 
@@ -390,8 +404,13 @@ private fun PagingChevron(
 }
 
 @Composable
-private fun HabitTrendBlock(bars: List<MonthBar>, name: String, currentMonth: YearMonth) {
-    Column(modifier = Modifier.padding(bottom = 0.6f.verticalGridUnitsAsDp())) {
+private fun HabitTrendBlock(
+    bars: List<MonthBar>,
+    name: String,
+    currentMonth: YearMonth,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.padding(bottom = 0.6f.verticalGridUnitsAsDp())) {
         LightText(
             text = name,
             // Detail, matching the habit name above each week strip on the home screen. The
@@ -403,19 +422,27 @@ private fun HabitTrendBlock(bars: List<MonthBar>, name: String, currentMonth: Ye
 
         Spacer(modifier = Modifier.height(NAME_TO_PLOT_UNITS.verticalGridUnitsAsDp()))
 
-        val chartHeight = CHART_HEIGHT_UNITS.verticalGridUnitsAsDp()
-        Row(
+        // The plot is the one part of a block that may give way. Everything else is text
+        // or a hairline, and all of it has to be on screen for a bar to say anything — so the
+        // chart takes the slot's remainder rather than a height of its own, and
+        // BoxWithConstraints hands that measured height to the bars scaled against it.
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(chartHeight),
-            verticalAlignment = Alignment.Bottom,
+                .weight(1f),
         ) {
-            bars.forEach { bar ->
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    MonthBarView(bar = bar, chartHeight = chartHeight)
+            val chartHeight = maxHeight
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                bars.forEach { bar ->
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+                        MonthBarView(bar = bar, chartHeight = chartHeight)
+                    }
                 }
             }
         }

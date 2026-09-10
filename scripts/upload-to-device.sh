@@ -4,6 +4,24 @@
 # production LP3 hardware (it exposes only an MTP interface), so the Tool
 # Manager's HTTP API is the only sideload path.
 #
+# NOT redundant with upstream's `:tool:uploadTool` Gradle task, which landed in
+# upstream/main on 2026-09-09. The two speak to different Tool Manager
+# generations and neither covers both:
+#
+#   uploadTool  HMAC-SHA256 over "method\npath\ntimestamp" in an X-Tm-Signature
+#               header, keyed by a hex secret you upload to the `Authentication`
+#               browser under the `developer` root; posts to
+#               /api/upload/developer/apkInbox. Its own comment notes the newer
+#               server "has no idea what an Authorization: Bearer header is".
+#   this script Authorization: Bearer <token off the QR code>, posting to
+#               /api/upload/Tool%20Inbox.
+#
+# Christian's LP3 runs a build predating that changeover: its Tool Manager root
+# offers only `Photos` and `Tool Inbox`, with no `developer` root and so nowhere
+# to put the HMAC key uploadTool needs. Delete this script once the phone takes
+# an OTA that exposes `Developer`, and not before — until then it is the only
+# thing that can install onto that handset.
+#
 # Usage:
 #   scripts/upload-to-device.sh 'https://192-168-15-151.my.local-ip.co:54449/#<64-hex>'
 #   scripts/upload-to-device.sh --no-build 'https://...#<token>'

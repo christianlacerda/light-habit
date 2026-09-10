@@ -82,9 +82,18 @@ for tools, so there is no AlarmManager and no local notifications; push would
 need a server. This is the tool's main weakness and it is a platform limit, not
 an omission.
 
-**A localized name.** The tool would like to be "Hábitos" in Portuguese, but
-`lighttool.toml`'s `label` is a single literal string that the build plugin
-writes straight into `android:label`. English for now.
+## The name in Portuguese
+
+The tool is Habits in English and **Hábitos** on a device set to Portuguese.
+`lighttool.toml` carries `label = "@string/tool_name"` rather than a literal,
+and the translations live in `tool/src/main/res/values/` and `values-pt/`.
+
+This works because the label is written straight into `android:label` and
+LightOS reads it back with `PackageManager.getApplicationLabel()`, which
+resolves the resource against the device's locale. Verified on the emulator:
+the toolbox lists Habits under `en-US` and Hábitos under `pt-BR`, from one
+build. Worth knowing that the metadata doc describes `label` as the literal
+string users see, so a resource reference may be more than was intended there.
 
 ## Licence
 

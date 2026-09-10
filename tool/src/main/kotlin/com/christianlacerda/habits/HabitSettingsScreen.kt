@@ -1,4 +1,4 @@
-package com.thelightphone.sample
+package com.christianlacerda.habits
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

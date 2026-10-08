@@ -25,7 +25,7 @@ else
 fi
 
 echo "Building and installing :tool..."
-./gradlew :tool:installDebug
+./gradlew :tool:installDebug -DlightSdk.allowAltServerPackage=true
 
 echo "Launching $TOOL_APP_ID..."
 adb shell am start -n "$TOOL_APP_ID/$TOOL_ACTIVITY"

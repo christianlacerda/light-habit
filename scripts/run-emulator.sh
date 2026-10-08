@@ -19,13 +19,13 @@ if adb devices | grep -q "^emulator-.*device$"; then
     echo "Emulator already running."
 else
     echo "Booting $AVD_NAME..."
-    nohup emulator -avd "$AVD_NAME" -writable-system >/tmp/light-emulator.log 2>&1 &
+    nohup nice -n 19 emulator -avd "$AVD_NAME" -writable-system -cores 2 >/tmp/light-emulator.log 2>&1 &
     disown
     wait_for_boot
 fi
 
 echo "Building and installing :tool..."
-./gradlew :tool:installDebug -DlightSdk.allowAltServerPackage=true
+nice -n 10 ./gradlew :tool:installDebug -DlightSdk.allowAltServerPackage=true
 
 echo "Launching $TOOL_APP_ID..."
 adb shell am start -n "$TOOL_APP_ID/$TOOL_ACTIVITY"

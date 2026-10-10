@@ -1,6 +1,6 @@
 [tool]
 id = "com.christianlacerda.habits"
-label = "@string/tool_name"
+label = "Habits"
 versionCode = 3
 versionName = "1.0.0"
 permissions = []

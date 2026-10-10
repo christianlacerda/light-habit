@@ -2,6 +2,8 @@
 # Boots the LightOS emulator AVD (if not already running) and installs/launches
 # the :tool app on it. One-time system-app setup (signing key + priv-app push)
 # is assumed to already be done — see docs/system_app/README.md if not.
+#
+# Boots headless by default. Pass --window to show the emulator window.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -9,6 +11,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 AVD_NAME="${AVD_NAME:-LightPhone3}"
 TOOL_APP_ID="$(grep -m1 '^id' tool/lighttool.toml | sed -E 's/.*"(.*)".*/\1/')"
 TOOL_ACTIVITY="com.thelightphone.sdk.LightActivity"
+
+WINDOW_FLAG="-no-window"
+[[ "${1:-}" == "--window" ]] && WINDOW_FLAG=""
 
 wait_for_boot() {
     adb wait-for-device
@@ -19,7 +24,7 @@ if adb devices | grep -q "^emulator-.*device$"; then
     echo "Emulator already running."
 else
     echo "Booting $AVD_NAME..."
-    nohup nice -n 19 emulator -avd "$AVD_NAME" -writable-system -cores 2 >/tmp/light-emulator.log 2>&1 &
+    nohup nice -n 19 emulator -avd "$AVD_NAME" -writable-system -cores 2 $WINDOW_FLAG >/tmp/light-emulator.log 2>&1 &
     disown
     wait_for_boot
 fi

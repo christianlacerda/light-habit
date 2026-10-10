@@ -29,8 +29,15 @@ else
     wait_for_boot
 fi
 
+TOML="tool/lighttool.toml"
+cp "$TOML" "$TOML.bak"
+trap 'mv -f "$TOML.bak" "$TOML"' EXIT
+sed -i 's|^serverPackage = "com.lightos"|serverPackage = "com.thelightphone.sdk.emulator"|' "$TOML"
+grep -q '^serverPackage = "com.thelightphone.sdk.emulator"' "$TOML" || { echo "error: could not set serverPackage" >&2; exit 1; }
+
 echo "Building and installing :tool..."
 nice -n 10 ./gradlew :tool:installDebug -DlightSdk.allowAltServerPackage=true
+mv -f "$TOML.bak" "$TOML"; trap - EXIT
 
 echo "Launching $TOOL_APP_ID..."
 adb shell am start -n "$TOOL_APP_ID/$TOOL_ACTIVITY"

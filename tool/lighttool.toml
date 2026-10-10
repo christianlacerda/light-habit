@@ -8,6 +8,5 @@ capabilities = []
 # No orientation lock. "portrait" letterboxes the tool on the LP3's near-square
 # 1080x1240 display — Android applies compatibility letterboxing to fixed-orientation
 # activities there, leaving bars down both sides. The device doesn't rotate anyway.
-# for an LP3 build, use the line below; the emulator package needs -DlightSdk.allowAltServerPackage=true
-# serverPackage = "com.lightos"
-serverPackage = "com.thelightphone.sdk.emulator"
+# scripts/run-emulator.sh switches this to the emulator package for its own build.
+serverPackage = "com.lightos"

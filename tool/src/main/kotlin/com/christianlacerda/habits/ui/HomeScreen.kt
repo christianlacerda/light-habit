@@ -229,8 +229,10 @@ private fun HabitTrackerScreen(
 
             if (!loaded) {
                 Spacer(modifier = Modifier.weight(1f))
-            } else if (habits.isEmpty()) {
-                EmptyHabitsContent(modifier = Modifier.weight(1f))
+            } else if (habits.isEmpty() && !(editMode && archivedHabits.isNotEmpty())) {
+                // Edit mode skips this when archived habits exist: the list below is the
+                // only way back to them.
+                EmptyHabitsContent(hasArchived = archivedHabits.isNotEmpty(), modifier = Modifier.weight(1f))
             } else {
                 Column(
                     modifier = Modifier
@@ -340,9 +342,10 @@ private fun HabitTrackerScreen(
             //
             // `+` appears while editing — on the resting screen it did nothing at
             // MAX_HABITS but raise a modal, which at least lands usefully next to ARCHIVE.
-            // The exception is a grid with no active habits: there is nothing to edit and
+            // The exception is a grid with no habits at all: there is nothing to edit and
             // no cap to hit, and the empty state's hint points at `+`, so `+` takes the
-            // pencil's slot.
+            // pencil's slot. With only archived habits the pencil stays: edit mode is the
+            // way back to them, and `+` is one tap further, inside it.
             LightBottomBar(
                 items = listOf(
                     // No gear while editing. Edit mode is about the habits in front of you;
@@ -363,7 +366,7 @@ private fun HabitTrackerScreen(
                     } else {
                         LightBarButton.Text(text = "REPORT", onClick = onReportTapped)
                     },
-                    if (editMode || (loaded && habits.isEmpty())) {
+                    if (editMode || (loaded && habits.isEmpty() && archivedHabits.isEmpty())) {
                         LightBarButton.LightIcon(
                             icon = LightIcons.ADD,
                             contentDescription = "Add habit",
@@ -397,13 +400,18 @@ private fun HabitTrackerScreen(
  * is what to do next.
  */
 @Composable
-private fun EmptyHabitsContent(modifier: Modifier = Modifier) {
+private fun EmptyHabitsContent(hasArchived: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
         LightText(
-            text = "No habits yet. Tap + to add one.",
+            // Each hint names the control that is actually on screen in that state.
+            text = if (hasArchived) {
+                "All habits are archived. Tap the pencil to bring one back or add another."
+            } else {
+                "No habits yet. Tap + to add one."
+            },
             variant = LightTextVariant.Copy,
             align = TextAlign.Center,
             lighten = true,

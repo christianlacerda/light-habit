@@ -11,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.thelightphone.sdk.ui.LightText
@@ -87,6 +89,19 @@ internal enum class DayCellState {
 }
 
 /**
+ * What a day cell says to accessibility services, and so to `uiautomator dump`: the habit,
+ * the ISO date and the cell's state. The pixels alone can't tell a test whether a day is done.
+ */
+internal fun dayCellDescription(habitName: String, epochDay: Long, state: DayCellState, filled: Boolean): String {
+    val status = when (state) {
+        DayCellState.TRACKABLE -> if (filled) "done" else "not done"
+        DayCellState.FUTURE -> "future"
+        DayCellState.BEFORE_HABIT -> "before habit"
+    }
+    return "$habitName, ${LocalDate.ofEpochDay(epochDay)}, $status"
+}
+
+/**
  * A single day's check box. Filled = done, outlined = not done, both neutral — a miss gets
  * no "streak broken" styling. Today adds a separate outer ring with a gap, since a thicker
  * same-colour border would vanish against a filled square.
@@ -98,6 +113,7 @@ internal enum class DayCellState {
  */
 @Composable
 internal fun DayCheckbox(
+    description: String,
     filled: Boolean,
     isToday: Boolean,
     state: DayCellState,
@@ -112,6 +128,7 @@ internal fun DayCheckbox(
     Box(
         modifier = Modifier
             .size(touchSize)
+            .semantics { contentDescription = description }
             .let { base ->
                 if (onToggle != null) {
                     base.lightClickable(

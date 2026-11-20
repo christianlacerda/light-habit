@@ -1,6 +1,5 @@
 package com.christianlacerda.habits.ui
 
-import androidx.compose.foundation.layout.size
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -8,13 +7,19 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.viewModelScope
 import com.christianlacerda.habits.model.Habit
 import com.christianlacerda.habits.model.HabitState
-import com.christianlacerda.habits.model.MAX_HABITS
 import com.christianlacerda.habits.model.WeekStart
-import com.christianlacerda.habits.model.snappedToWeekStart
+import com.christianlacerda.habits.model.activeHabits
+import com.christianlacerda.habits.model.addHabit
+import com.christianlacerda.habits.model.archiveHabit
+import com.christianlacerda.habits.model.canAddHabit
+import com.christianlacerda.habits.model.deleteHabit
+import com.christianlacerda.habits.model.minWeekOffset
+import com.christianlacerda.habits.model.renameHabit
+import com.christianlacerda.habits.model.toggleCompletion
+import com.christianlacerda.habits.model.unarchiveHabit
 import com.thelightphone.sdk.LightViewModel
 import com.thelightphone.sdk.SimpleLightScreen
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,21 +113,7 @@ class HabitTrackerViewModel(
     // screen, so one would look like working behaviour while doing nothing. Intercepting
     // back needs an SDK change, which this fork does not make.
 
-    /** Week the record starts: earliest createdAt among ACTIVE habits only. Archived
-     *  habits are excluded even though their history is real, because they render in no
-     *  week — flooring on them made `‹` walk back through weeks whose grid was empty or
-     *  fully dimmed, and left both chevrons live on the "No habits yet" empty state. The
-     *  reachable range should promise exactly as much history as the screen can show, so
-     *  unarchiving a habit correctly extends the floor back again. */
-    private fun earliestWeekStart(): LocalDate =
-        (_state.value.habits.filter { it.archivedAt == null }.minOfOrNull { it.createdAt }
-            ?.let { LocalDate.ofEpochDay(it) } ?: _today.value)
-            .snappedToWeekStart(_state.value.weekStart)
-
-    private fun currentWeekStart(): LocalDate = _today.value.snappedToWeekStart(_state.value.weekStart)
-
-    private fun minWeekOffset(): Int =
-        (-ChronoUnit.WEEKS.between(earliestWeekStart(), currentWeekStart())).toInt().coerceAtMost(0)
+    private fun minWeekOffset(): Int = minWeekOffset(_state.value, _today.value)
 
     private fun clampWeekOffset() {
         _weekOffset.value = _weekOffset.value.coerceIn(minWeekOffset(), 0)
@@ -150,13 +141,10 @@ class HabitTrackerViewModel(
     }
 
     val activeHabits: List<Habit>
-        get() = _state.value.habits.filter { it.archivedAt == null }.sortedBy { it.order }
+        get() = _state.value.activeHabits()
 
     val archivedHabits: List<Habit>
         get() = _state.value.habits.filter { it.archivedAt != null }.sortedBy { it.order }
-
-    private val canAddHabit: Boolean
-        get() = activeHabits.size < MAX_HABITS
 
     /**
      * Called when `+` is tapped. Returns true if the caller should navigate to the
@@ -164,7 +152,7 @@ class HabitTrackerViewModel(
      * and returns false.
      */
     fun requestAdd(): Boolean {
-        if (!canAddHabit) {
+        if (!_state.value.canAddHabit()) {
             _limitMessage.value = ADD_LIMIT_MESSAGE
             return false
         }
@@ -172,17 +160,7 @@ class HabitTrackerViewModel(
     }
 
     fun addHabit(name: String) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty() || !canAddHabit) return
-        val today = LocalDate.now().toEpochDay()
-        val habit = Habit(
-            id = UUID.randomUUID().toString(),
-            name = trimmed,
-            createdAt = today,
-            archivedAt = null,
-            order = nextOrder(),
-        )
-        updateAndPersist { it.copy(habits = it.habits + habit) }
+        updateAndPersist { addHabit(it, name, LocalDate.now(), UUID.randomUUID().toString()) }
     }
 
     /**
@@ -191,75 +169,35 @@ class HabitTrackerViewModel(
      * tap-then-pocket, so a debounced or exit-time write would silently lose taps.
      */
     fun toggleCompletion(habitId: String, epochDay: Long) {
-        if (epochDay > LocalDate.now().toEpochDay()) return // defense in depth; UI shouldn't call this for future days
-        val habit = _state.value.habits.find { it.id == habitId } ?: return
-        val startWeekEpoch = LocalDate.ofEpochDay(habit.createdAt).snappedToWeekStart(_state.value.weekStart).toEpochDay()
-        if (epochDay < startWeekEpoch) return // defense in depth; UI shouldn't call this before the habit's creation week
-        updateAndPersist { state ->
-            val current = state.completions[habitId] ?: emptySet()
-            val updated = if (epochDay in current) current - epochDay else current + epochDay
-            state.copy(completions = state.completions + (habitId to updated))
-        }
+        updateAndPersist { toggleCompletion(it, habitId, epochDay, LocalDate.now()) }
     }
 
-    /** Archive is not delete — completion history is untouched, the habit just stops
-     *  appearing in the grid and frees up an active slot. */
     fun archiveHabit(habitId: String) {
-        val today = LocalDate.now().toEpochDay()
-        updateAndPersist { state ->
-            state.copy(
-                habits = state.habits.map {
-                    if (it.id == habitId) it.copy(archivedAt = today) else it
-                },
-            )
-        }
+        updateAndPersist { archiveHabit(it, habitId, LocalDate.now()) }
     }
 
     /** Returns true if the habit was unarchived; false (with the limit message surfaced)
      *  if 3 habits are already active. */
     fun unarchiveHabit(habitId: String): Boolean {
-        if (!canAddHabit) {
+        if (!_state.value.canAddHabit()) {
             _limitMessage.value = RESTORE_LIMIT_MESSAGE
             return false
         }
-        val order = nextOrder()
-        updateAndPersist { state ->
-            state.copy(
-                habits = state.habits.map {
-                    if (it.id == habitId) it.copy(archivedAt = null, order = order) else it
-                },
-            )
-        }
+        updateAndPersist { unarchiveHabit(it, habitId) }
         return true
     }
 
-    /** Permanently removes a habit and its completion history. Only reachable from the
-     *  archived list, behind a confirmation step in the UI. */
+    /** Only reachable behind a confirmation step in the UI. */
     fun deleteHabit(habitId: String) {
-        updateAndPersist { state ->
-            state.copy(
-                habits = state.habits.filterNot { it.id == habitId },
-                completions = state.completions - habitId,
-            )
-        }
+        updateAndPersist { deleteHabit(it, habitId) }
     }
 
     fun dismissLimitMessage() {
         _limitMessage.value = null
     }
 
-    /** Renaming has no effect on history or archive state — it's a pure label change,
-     *  reachable from a habit row's Rename action in edit mode. No-op on a blank name. */
     fun renameHabit(habitId: String, newName: String) {
-        val trimmed = newName.trim()
-        if (trimmed.isEmpty()) return
-        updateAndPersist { state ->
-            state.copy(
-                habits = state.habits.map {
-                    if (it.id == habitId) it.copy(name = trimmed) else it
-                },
-            )
-        }
+        updateAndPersist { renameHabit(it, habitId, newName) }
     }
 
     /** Display-only preference — reorders the grid's day-letter header and week grouping.
@@ -277,16 +215,15 @@ class HabitTrackerViewModel(
         _today.value = LocalDate.now()
     }
 
-    private fun nextOrder(): Int = (_state.value.habits.maxOfOrNull { it.order } ?: -1) + 1
-
     /**
      * Updates in-memory state synchronously (so the UI reflects the tap immediately)
      * and fires the DataStore write right away on IO — not debounced, not batched, not
      * deferred to screen exit — since a habit tracker's worst bug is a tap that silently
-     * didn't save because the app got backgrounded a moment later.
+     * didn't save because the app got backgrounded a moment later. A null from
+     * [transform] is a refused change and writes nothing.
      */
-    private fun updateAndPersist(transform: (HabitState) -> HabitState) {
-        val newState = transform(_state.value)
+    private fun updateAndPersist(transform: (HabitState) -> HabitState?) {
+        val newState = transform(_state.value) ?: return
         _state.value = newState
         clampWeekOffset()
         viewModelScope.launch(Dispatchers.IO) {

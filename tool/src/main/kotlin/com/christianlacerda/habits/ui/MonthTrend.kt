@@ -92,6 +92,14 @@ internal fun monthBars(
     }
 }
 
+/** What a month column says to accessibility services, and so to `uiautomator dump`:
+ *  "Read, 2026-06, 75%, closed". The percentage is the bar's height. */
+internal fun monthBarDescription(habitName: String, bar: MonthBar): String {
+    if (!bar.trackable) return "$habitName, ${bar.month}, not tracked"
+    val percent = Math.round(bar.fraction * 100)
+    return "$habitName, ${bar.month}, $percent%, ${if (bar.inProgress) "in progress" else "closed"}"
+}
+
 internal fun windowLabel(window: List<YearMonth>): String {
     val first = window.first()
     val last = window.last()

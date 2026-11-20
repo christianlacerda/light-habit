@@ -53,3 +53,6 @@ __pycache__/
 
 ### Signing keys ###
 /signer/keys/
+
+### Habits eval output ###
+/eval/out/

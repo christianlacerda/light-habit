@@ -91,8 +91,10 @@ internal fun HabitBlock(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center,
                     ) {
+                        val filled = epochDay in completedDays
                         DayCheckbox(
-                            filled = epochDay in completedDays,
+                            description = dayCellDescription(habit.name, epochDay, state, filled),
+                            filled = filled,
                             isToday = dayIndex == todayIndex,
                             state = state,
                             onToggle = if (state == DayCellState.TRACKABLE) {

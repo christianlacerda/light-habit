@@ -73,7 +73,10 @@ generation each one speaks to.
 commit, against their own pinned copy of the SDK — see
 [Sharing Your Tool](docs/sideloading) and [`builder/`](./builder). Their
 extractor takes `tool/lighttool.toml`, `tool/build.gradle.kts`, and
-`tool/src/main/{kotlin,java,res,assets}`, and nothing else from this repo.
+`tool/src/main/{kotlin,java,res,assets}`, plus the root `gradle.properties`, whose
+`sdkVersion` picks the SDK the build server compiles against
+([required files](docs/repo/README.md#required-files)). Nothing else from this repo
+is used.
 
 ## Testing
 

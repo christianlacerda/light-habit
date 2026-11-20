@@ -23,5 +23,6 @@ Changes to all of these paths ask the user for approval first (`.claude/hooks/gu
 
 - Unit tests: `./gradlew :tool:testDebugUnitTest`
 - Emulator scenarios: `./scripts/run-emulator.sh`, then `python3 eval/run.py` (`--judge` for
-  the screenshot rubrics). See `eval/README.md`.
+  the screenshot rubrics). See `eval/README.md`. Run them headless (the script's default);
+  never open the emulator window just to test, and leave one the user opened alone.
 - Only `tool/lighttool.toml`, `tool/build.gradle.kts` and `tool/src/main/**` ship to Light.

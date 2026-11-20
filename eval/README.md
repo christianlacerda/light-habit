@@ -15,12 +15,19 @@ in seconds and need no device.
 ## 2. Scenarios on the emulator
 
 ```
-./scripts/run-emulator.sh              # boots LightPhone3, installs the current build
+./scripts/run-emulator.sh              # boots LightPhone3 headless, installs the current build
 python3 eval/run.py                    # every scenario, deterministic checks only
 python3 eval/run.py --only report      # scenarios whose name starts with "report"
 python3 eval/run.py --judge            # also have Claude grade screenshots against rubrics
 python3 eval/run.py --list
 ```
+
+Run it headless. The eval needs nothing from the emulator window: it reads the screen with
+`uiautomator dump` and takes screenshots with `adb exec-out screencap`, and both work the
+same with no window. `run-emulator.sh` boots headless (`-no-window`) by default, but it reuses
+an emulator that is already running, windowed or not. To switch an open window to headless,
+`adb emu kill` first. Use `./scripts/run-emulator.sh --window` only to watch a run or to debug
+a scenario by hand.
 
 Each scenario:
 1. sets the device clock to a fixed date (Thursday Nov 19 2026);

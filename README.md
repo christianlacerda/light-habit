@@ -78,7 +78,7 @@ extractor takes `tool/lighttool.toml`, `tool/build.gradle.kts`, and
 ## Testing
 
 `./gradlew :tool:testDebugUnitTest` runs the unit tests for the rules and the report's
-arithmetic. `python3 eval/run.py` drives the real tool on the emulator through a set of
+arithmetic. `python3 eval/run.py` drives the real tool on a headless emulator through a set of
 scenarios, and with `--judge` it also has Claude grade screenshots against a rubric. See
 [`eval/`](./eval). Neither leaves this repo: Light's extractor ships only `tool/src/main`.
 

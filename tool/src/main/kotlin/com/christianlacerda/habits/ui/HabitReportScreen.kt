@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -373,22 +374,36 @@ private fun MonthBarView(bar: MonthBar, chartHeight: Dp) {
     if (!bar.trackable) return
 
     val color = LightThemeTokens.colors.content
-    val barHeight = (chartHeight * bar.fraction).coerceAtLeast(
-        if (bar.fraction > 0f) MIN_VISIBLE_BAR else 0.dp,
-    )
-    if (barHeight <= 0.dp) return
+    val width = DAY_CELL_UNITS.gridUnitsAsDp()
+    // Top corners only: the bottom sits square on the baseline.
+    val shape = RoundedCornerShape(topStart = CELL_CORNER, topEnd = CELL_CORNER)
+    fun heightOf(fraction: Float): Dp =
+        (chartHeight * fraction).coerceAtLeast(if (fraction > 0f) MIN_VISIBLE_BAR else 0.dp)
 
-    Box(
-        modifier = Modifier
-            .width(DAY_CELL_UNITS.gridUnitsAsDp())
-            .height(barHeight)
-            .then(
-                // Hollow while the month is still running, solid once it's closed — the same
-                // outline-vs-fill language the day cells already use for done/not-done. Without
-                // it, every visit in the first days of a month would show a cliff that isn't real.
-                if (bar.inProgress) Modifier.border(1.dp, color) else Modifier.background(color),
-            ),
-    )
+    // Solid fill for what was done, on the whole month's scale — the same outline-vs-fill
+    // language the day cells use for done/not-done. The running month adds an outline at the
+    // share of days so far: the most the fill could be yet. Without it a month two days old
+    // reads as a collapse; with the fill scaled to days elapsed instead, four early check-ins
+    // stood as tall as a whole good month.
+    Box(contentAlignment = Alignment.BottomCenter) {
+        if (bar.inProgress) {
+            Box(
+                modifier = Modifier
+                    .width(width)
+                    .height(heightOf(bar.elapsedFraction))
+                    .border(1.dp, color, shape),
+            )
+        }
+        val fill = heightOf(bar.fraction)
+        if (fill > 0.dp) {
+            Box(
+                modifier = Modifier
+                    .width(width)
+                    .height(fill)
+                    .background(color, shape),
+            )
+        }
+    }
 }
 
 @Composable

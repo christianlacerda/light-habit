@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,6 +51,13 @@ internal const val DAY_CELL_UNITS = 2.3f
 /** How far a pre-creation day's border fades below `contentSecondary`. Alpha rather than a
  *  third colour: the theme has two content tones, and fading one works in both schemes. */
 private const val BEFORE_HABIT_BORDER_ALPHA = 0.45f
+
+/** A slight rounding: still read as a square, just a softer one. The report's bars round
+ *  their top corners by the same amount, as the same instrument. */
+internal val CELL_CORNER = 4.dp
+
+/** Gap between a cell and today's ring around it, each side. */
+private val HALO_GAP = 5.dp
 
 @Composable
 internal fun DayLetterRow(weekStart: LocalDate, todayIndex: Int, modifier: Modifier = Modifier) {
@@ -121,7 +129,7 @@ internal fun DayCheckbox(
 ) {
     val colors = LightThemeTokens.colors
     val cellSize = DAY_CELL_UNITS.gridUnitsAsDp()
-    val haloSize = cellSize + 10.dp
+    val haloSize = cellSize + HALO_GAP * 2
     // Hit area only — the halo keeps its drawn size, so the today ring doesn't inflate.
     val touchSize = maxOf(haloSize, MIN_TOUCH_TARGET)
 
@@ -145,7 +153,8 @@ internal fun DayCheckbox(
             Box(
                 modifier = Modifier
                     .size(haloSize)
-                    .border(width = 1.5.dp, color = colors.content),
+                    // Concentric with the cell's corners, so the gap stays even all round.
+                    .border(width = 1.5.dp, color = colors.content, shape = RoundedCornerShape(CELL_CORNER + HALO_GAP)),
             )
         }
         Box(
@@ -159,9 +168,10 @@ internal fun DayCheckbox(
                         DayCellState.BEFORE_HABIT ->
                             colors.contentSecondary.copy(alpha = BEFORE_HABIT_BORDER_ALPHA)
                     },
+                    shape = RoundedCornerShape(CELL_CORNER),
                 )
                 // Never filled before creation: toggling is gated to TRACKABLE.
-                .background(if (filled) colors.content else Color.Transparent),
+                .background(if (filled) colors.content else Color.Transparent, RoundedCornerShape(CELL_CORNER)),
         )
     }
 }

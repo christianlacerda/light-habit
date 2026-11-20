@@ -110,43 +110,64 @@ class Context:
 
     # report helpers
 
-    def expect_bar_heights(self, s: Screen, label: str, expected: dict[tuple[str, str], tuple[int, int]]):
-        """Measures each report bar in a screenshot against check-ins over trackable days.
+    def expect_bar_heights(self, s: Screen, label: str, expected: dict[tuple[str, str], tuple[int, ...]]):
+        """Measures each report bar in a screenshot against check-ins over the month's trackable days.
 
-        `expected` maps (habit, "yyyy-mm") to (check-ins, trackable days), worked out from the
-        seed, never read back from the app. A column's node spans the whole chart height, so
-        the bar's drawn height is how far up from the column's bottom the topmost lit pixel
-        sits on its centre line: the fill of a solid bar, the top edge of a hollow one.
+        `expected` maps (habit, "yyyy-mm") to (check-ins, trackable days) for a finished month,
+        or (check-ins, trackable days, days elapsed) for the running one, worked out from the
+        seed, never read back from the app. A column's node spans the whole chart height. On its
+        centre line, the fill is the unbroken run of lit pixels up from the bottom, and the
+        outline's top is the topmost lit pixel; a finished month has no outline, so the two meet.
         """
         self.snap(label)
         image = png.read(self.shots[-1])
         px_per_dp = int(self.d.shell("wm density").split()[-1]) / 160
         min_bar = MIN_VISIBLE_BAR_DP * px_per_dp
         heights = {}
-        for (habit, month), (done, possible) in expected.items():
+        for (habit, month), (done, possible, *running) in expected.items():
             node = s.find(startswith=f"{habit}, {month}, ")
             if not self.check(node is not None, f"{habit} {month} has a column on screen"):
                 continue
             x = (node.bounds[0] + node.bounds[2]) // 2
             top, bottom = node.bounds[1], node.bounds[3]
-            lit = next((y for y in range(top, bottom) if image.luma(x, y) > 128), None)
-            drawn = 0 if lit is None else bottom - lit
             chart = bottom - top
-            fraction = done / possible
-            want = 0 if done == 0 else max(fraction * chart, min_bar)
+            lit = lambda y: image.luma(x, y) > 128
+            # Allow a pixel or two of antialiasing where the bar meets the column's bottom.
+            start = next((y for y in range(bottom - 1, bottom - 4, -1) if lit(y)), None)
+            fill_top = start
+            while fill_top is not None and fill_top - 1 >= top and lit(fill_top - 1):
+                fill_top -= 1
+            fill = 0 if start is None else bottom - fill_top
+            topmost = next((y for y in range(top, bottom) if lit(y)), None)
+            outline = 0 if topmost is None else bottom - topmost
+
+            def want(f: float) -> float:
+                return 0 if f == 0 else max(f * chart, min_bar)
+
             tolerance = max(4, 0.03 * chart)
-            heights[(habit, month)] = drawn
+            fraction = done / possible
+            heights[(habit, month)] = fill
             self.check(
-                abs(drawn - want) <= tolerance,
-                f"{habit} {month}: {done}/{possible} check-ins is drawn {fraction:.0%} of the chart",
-                f"drawn {drawn}px of {chart}px ({drawn / chart:.0%}), expected {want:.0f}px ±{tolerance:.0f}",
+                abs(fill - want(fraction)) <= tolerance,
+                f"{habit} {month}: {done}/{possible} check-ins fills {fraction:.0%} of the chart",
+                f"fill {fill}px of {chart}px ({fill / chart:.0%}), expected {want(fraction):.0f}px ±{tolerance:.0f}",
             )
-        # Whatever the tolerance, a clearly larger share must be a taller bar.
+            if running:
+                share = running[0] / possible
+                self.check(
+                    abs(outline - want(share)) <= tolerance,
+                    f"{habit} {month}: the outline marks {running[0]}/{possible} days so far ({share:.0%})",
+                    f"outline {outline}px of {chart}px ({outline / chart:.0%}), expected {want(share):.0f}px ±{tolerance:.0f}",
+                )
+            else:
+                self.check(abs(outline - fill) <= tolerance, f"{habit} {month}: a finished month has no outline",
+                           f"lit up to {outline}px above a {fill}px fill")
+        # Whatever the tolerance, a clearly larger share must be a taller fill.
+        share = {k: v[0] / v[1] for k, v in expected.items()}
         for a, b in ((a, b) for a in heights for b in heights if a[0] == b[0] and a != b):
-            fa, fb = (lambda d, p: d / p)(*expected[a]), (lambda d, p: d / p)(*expected[b])
-            if fa >= fb + 0.10:
+            if share[a] >= share[b] + 0.10:
                 self.check(heights[a] > heights[b],
-                           f"{a[0]} {a[1]} ({fa:.0%}) is taller than {b[1]} ({fb:.0%})",
+                           f"{a[0]} {a[1]} ({share[a]:.0%}) fills taller than {b[1]} ({share[b]:.0%})",
                            f"{heights[a]}px vs {heights[b]}px")
         return heights
 
@@ -447,23 +468,25 @@ def week_start_monday(c: Context):
 
 
 @scenario(
-    "Report bars measure trackable days only, and the running month is hollow",
+    "Report bars measure trackable days only, and the running month carries an outline",
     seed=habit_state(
         # Created Saturday June 20; its creation week starts June 14, so June has 17 trackable days.
         H("Read", date(2026, 6, 20),
           done=days(date(2026, 6, 14), date(2026, 6, 30))       # 17/17  -> 100%
           + days(date(2026, 7, 1), date(2026, 7, 8))             # 8/31   -> 26%
           + days(date(2026, 9, 1), date(2026, 9, 15))            # 15/30  -> 50%
-          + days(date(2026, 11, 1), date(2026, 11, 19), 2)),     # 10/19  -> 53%, in progress
+          + days(date(2026, 11, 1), date(2026, 11, 19), 2)),     # 10/30  -> 33%, 19/30 days so far
         # Created Monday Oct 5; Sunday start makes Oct 4–31 trackable, 28 days.
         H("Run", date(2026, 10, 5), done=days(date(2026, 10, 4), date(2026, 10, 17))),  # 14/28 -> 50%
     ),
     rubric=(
         "A six-month report, JUN–NOV 2026, one chart per habit with one bar per month. Expected bar "
-        "heights as a share of the chart: Read — JUN 100%, JUL 26%, AUG 0%, SEP 50%, OCT 0%, NOV 53%; "
+        "heights as a share of the chart: Read — JUN 100%, JUL 26%, AUG 0%, SEP 50%, OCT 0%, NOV 33%; "
         "Run — JUN to SEP no bar at all, OCT 50%, NOV 0%. Pass if the bar heights are visibly in those "
-        "proportions, the NOV bar is drawn hollow (outline only) while finished months are solid, every "
-        "month label sits under its own bar with NOV marked as current, and nothing is clipped."
+        "proportions; finished months are plain solid bars; NOV shows a solid fill at those heights "
+        "inside a thin outline reaching 63% of the chart (the share of November so far), the outline "
+        "visibly taller than Read's fill and drawn even for Run, whose fill is empty; every month label "
+        "sits under its own bar with NOV marked as current; and nothing is clipped."
     ),
 )
 def report_bars(c: Context):
@@ -476,10 +499,10 @@ def report_bars(c: Context):
         ("Read", "2026-08"): "0%, closed",
         ("Read", "2026-09"): "50%, closed",
         ("Read", "2026-10"): "0%, closed",
-        ("Read", "2026-11"): "53%, in progress",
+        ("Read", "2026-11"): "33%, in progress, 63% elapsed",
         ("Run", "2026-09"): "not tracked",
         ("Run", "2026-10"): "50%, closed",
-        ("Run", "2026-11"): "0%, in progress",
+        ("Run", "2026-11"): "0%, in progress, 63% elapsed",
     }
     for (habit, month), want in expected.items():
         got = s.bar(habit, month)
@@ -532,33 +555,34 @@ def report_bar_heights(c: Context):
     s = c.d.tap("REPORT")
     c.expect_bar_heights(s, "report", {
         ("Read", "2026-06"): (30, 30), ("Read", "2026-07"): (1, 31), ("Read", "2026-08"): (0, 31),
-        ("Read", "2026-09"): (15, 30), ("Read", "2026-10"): (4, 31), ("Read", "2026-11"): (19, 19),
+        ("Read", "2026-09"): (15, 30), ("Read", "2026-10"): (4, 31), ("Read", "2026-11"): (19, 30, 19),
         ("Run", "2026-06"): (6, 30), ("Run", "2026-07"): (12, 31), ("Run", "2026-08"): (18, 31),
-        ("Run", "2026-09"): (24, 30), ("Run", "2026-10"): (28, 31), ("Run", "2026-11"): (10, 19),
+        ("Run", "2026-09"): (24, 30), ("Run", "2026-10"): (28, 31), ("Run", "2026-11"): (10, 30, 19),
         ("Write", "2026-06"): (3, 30), ("Write", "2026-07"): (3, 31), ("Write", "2026-08"): (3, 31),
-        ("Write", "2026-09"): (3, 30), ("Write", "2026-10"): (3, 31), ("Write", "2026-11"): (3, 19),
+        ("Write", "2026-09"): (3, 30), ("Write", "2026-10"): (3, 31), ("Write", "2026-11"): (3, 30, 19),
     })
 
 
 @scenario(
-    "Early in a month, a few check-ins can stand as tall as a full month's: the running month "
-    "counts only the days so far",
-    # Viewed Tuesday October 6. September: 15 of 30 days. October: 4 of the 6 days so far.
+    "Early in a month, a few check-ins stay short beside a fuller finished month, inside an "
+    "outline marking the days so far",
+    # Viewed Tuesday October 6. September: 15 of 30 days. October: 4 of 31, 6 days in.
     seed=habit_state(H("Read", date(2026, 8, 2),
                        done=first_days(date(2026, 9, 1), 15) + first_days(date(2026, 10, 1), 4))),
     now=datetime(2026, 10, 6, 10, 0, 0),
     rubric=(
-        "A report viewed on October 6. Read's SEP bar (15 check-ins in 30 days) and OCT bar (4 "
-        "check-ins in the 6 days of October so far) are about the same height. Pass if the OCT bar "
-        "is unmistakably drawn differently from the finished SEP bar (hollow, outline only) so it "
-        "reads as a month still in progress, and OCT is marked as the current month in the labels."
+        "A report viewed on October 6. Read's SEP bar is a solid bar at half the chart (15 check-ins "
+        "in 30 days). OCT has 4 check-ins in 31 days so far. Pass if: the OCT solid fill is clearly "
+        "much shorter than SEP's, roughly a quarter of its height; OCT also shows a thin outline a "
+        "little taller than its fill (the 6 days of October so far), so it reads as a month in "
+        "progress rather than a failed one; and OCT is marked as the current month in the labels."
     ),
 )
 def report_running_month(c: Context):
     c.d.launch()
     s = c.d.tap("REPORT")
-    c.check(s.bar("Read", "2026-10") == "67%, in progress", "October is 4/6 days, in progress",
-            f"got {s.bar('Read', '2026-10')!r}")
+    got = s.bar("Read", "2026-10")
+    c.check(got == "13%, in progress, 19% elapsed", "October is 4/31 days, 6 of 31 elapsed", f"got {got!r}")
     c.expect_bar_heights(s, "report", {
-        ("Read", "2026-08"): (0, 31), ("Read", "2026-09"): (15, 30), ("Read", "2026-10"): (4, 6),
+        ("Read", "2026-08"): (0, 31), ("Read", "2026-09"): (15, 30), ("Read", "2026-10"): (4, 31, 6),
     })

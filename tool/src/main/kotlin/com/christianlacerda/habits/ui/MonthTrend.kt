@@ -25,16 +25,22 @@ internal val MONTH_LABEL_FORMAT = DateTimeFormatter.ofPattern("MMM")
 /**
  * One month's column for one habit.
  *
- * [fraction] is the share of *trackable* days completed, not calendar days — a habit created
- * on the 20th is only answerable for the days it existed.
+ * [fraction] is the share of the month's *trackable* days completed, not calendar days — a
+ * habit created on the 20th is only answerable for the days it existed. The month still
+ * running counts against all of its trackable days too, the ones still to come included, so
+ * every fill is on the same scale and four check-ins never stand as tall as fifteen.
  */
 internal data class MonthBar(
     val month: YearMonth,
     val fraction: Float,
     /** False when the habit did not exist at all that month — an empty column, not a zero. */
     val trackable: Boolean,
-    /** The month still running. Drawn hollow, and scaled by days elapsed (see [monthBars]). */
+    /** The month still running. Drawn with an outline at [elapsedFraction] around its fill. */
     val inProgress: Boolean,
+    /** Share of the trackable days that have arrived: the most [fraction] could be so far.
+     *  1 for a finished month. Drawn as the running month's outline, so an early fill reads
+     *  against what was possible rather than as a collapse. */
+    val elapsedFraction: Float = 1f,
 )
 
 internal fun monthWindow(currentMonth: YearMonth, offset: Int): List<YearMonth> {
@@ -73,31 +79,35 @@ internal fun monthBars(
 
     return window.map { month ->
         val from = maxOf(month.atDay(1), firstTrackable)
-        // The running month is measured against days elapsed, so it compares fairly with
-        // a finished one rather than reading as a collapse.
-        val to = minOf(month.atEndOfMonth(), today)
+        val end = month.atEndOfMonth()
+        // Completions can't be later than today; only the denominator looks past it.
+        val to = minOf(end, today)
 
         if (to < from) {
             MonthBar(month, fraction = 0f, trackable = false, inProgress = month == currentMonth)
         } else {
-            val possible = ChronoUnit.DAYS.between(from, to).toInt() + 1
+            val possible = ChronoUnit.DAYS.between(from, end).toInt() + 1
+            val elapsed = ChronoUnit.DAYS.between(from, to).toInt() + 1
             val done = completions.count { it in from.toEpochDay()..to.toEpochDay() }
             MonthBar(
                 month = month,
                 fraction = (done.toFloat() / possible).coerceIn(0f, 1f),
                 trackable = true,
                 inProgress = month == currentMonth,
+                elapsedFraction = elapsed.toFloat() / possible,
             )
         }
     }
 }
 
 /** What a month column says to accessibility services, and so to `uiautomator dump`:
- *  "Read, 2026-06, 75%, closed". The percentage is the bar's height. */
+ *  "Read, 2026-06, 75%, closed", or "Read, 2026-11, 33%, in progress, 63% elapsed" for the
+ *  running month. The first percentage is the fill's height, the elapsed one the outline's. */
 internal fun monthBarDescription(habitName: String, bar: MonthBar): String {
     if (!bar.trackable) return "$habitName, ${bar.month}, not tracked"
     val percent = Math.round(bar.fraction * 100)
-    return "$habitName, ${bar.month}, $percent%, ${if (bar.inProgress) "in progress" else "closed"}"
+    if (!bar.inProgress) return "$habitName, ${bar.month}, $percent%, closed"
+    return "$habitName, ${bar.month}, $percent%, in progress, ${Math.round(bar.elapsedFraction * 100)}% elapsed"
 }
 
 internal fun windowLabel(window: List<YearMonth>): String {

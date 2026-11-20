@@ -22,9 +22,11 @@ you did, and the tool has no scheduling.
 
 **Report** — one line per habit, one bar per month, six months at a time. Bar
 height is days completed over days the habit could have been done, so a habit
-created on the 20th isn't punished for the first nineteen days. The month still
-running is drawn hollow and measured only against the days elapsed, so early
-January doesn't read as a collapse.
+created on the 20th isn't punished for the first nineteen days. Every month, the
+running one included, is measured against all of its days, so bars compare
+directly: four check-ins never stand as tall as fifteen. The running month adds an
+outline at the share of days so far, the most its fill could be yet, so early
+January reads as on track or behind rather than as a collapse.
 
 **Edit mode** — rename, archive, delete, and add, inline on each habit's row.
 Archiving preserves a habit's history and takes it out of the grid; unarchiving

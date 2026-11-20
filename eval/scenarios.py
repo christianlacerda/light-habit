@@ -142,17 +142,18 @@ def empty_state(c: Context):
     s = c.d.launch()
     c.check(s.has(contains="No habits yet"), "the empty-state hint is shown")
     c.check(not s.has("Previous week") and not s.has("Next week"), "no week chevrons on the empty state")
+    c.check(s.has("Add habit") and not s.has("Edit habits"), "the + the hint names is on screen, in the pencil's place")
     c.snap("empty")
+    s = c.d.tap("Add habit")
+    c.check(s.has("ADD"), "+ opens the naming screen", f"on screen: {s.labels()}")
 
 
 @scenario("Adding a habit trims the name and puts it on the grid", seed=None)
 def add_habit(c: Context):
     c.d.launch()
-    c.d.tap("Edit habits")
     c.d.tap("Add habit")
     s = c.submit_name("  Read  ", "ADD")
-    c.d.tap("DONE")
-    s = c.d.screen()
+    c.check(s.has("Edit habits") and not s.has("Add habit"), "with a habit on the grid, the pencil is back")
     c.check(s.has("Read"), "the habit is listed by its trimmed name", f"on screen: {s.labels()}")
     c.expect_cell(s, "Read", TODAY, "not done")
     stored = c.stored().get("habits", [])

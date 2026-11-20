@@ -338,8 +338,11 @@ private fun HabitTrackerScreen(
             // the bar at three slots. Ranked by frequency at rest: ticking needs no button,
             // so REPORT takes the centre and editing steps back to a pencil.
             //
-            // `+` appears only while editing — on the resting screen it did nothing at
+            // `+` appears while editing — on the resting screen it did nothing at
             // MAX_HABITS but raise a modal, which at least lands usefully next to ARCHIVE.
+            // The exception is a grid with no active habits: there is nothing to edit and
+            // no cap to hit, and the empty state's hint points at `+`, so `+` takes the
+            // pencil's slot.
             LightBottomBar(
                 items = listOf(
                     // No gear while editing. Edit mode is about the habits in front of you;
@@ -360,7 +363,7 @@ private fun HabitTrackerScreen(
                     } else {
                         LightBarButton.Text(text = "REPORT", onClick = onReportTapped)
                     },
-                    if (editMode) {
+                    if (editMode || (loaded && habits.isEmpty())) {
                         LightBarButton.LightIcon(
                             icon = LightIcons.ADD,
                             contentDescription = "Add habit",

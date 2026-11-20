@@ -44,7 +44,10 @@ bin/
 .DS_Store
 
 ### Clanker ###
-.claude/
+# Ignored, except the shared guard that keeps the evals honest (see CLAUDE.md).
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 
 ### Python (builder/) ###
 __pycache__/

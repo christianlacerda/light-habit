@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "ask": [
+      "Edit(/eval/**)",
+      "Edit(/tool/src/test/**)",
+      "Edit(/.claude/settings.json)",
+      "Edit(/.claude/hooks/**)",
+      "Edit(/.githooks/**)",
+      "Edit(/CLAUDE.md)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-evals.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

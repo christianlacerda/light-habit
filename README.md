@@ -58,18 +58,19 @@ This boots the `LightPhone3` AVD if it isn't already running, installs `:tool`,
 and launches it.
 
 **On a real Light Phone III.** There is no ADB on production LP3 hardware — it
-exposes only an MTP interface — so installing means going through the Tool
-Manager over Wi-Fi. Open it on the phone, then pass the URL from its QR code
-(the trailing hex string is a single-use auth token, minted fresh on every Tool
-Manager restart):
+exposes only an MTP interface — so installing goes through the Tool Manager over
+Wi-Fi, with upstream's `:tool:uploadTool` Gradle task. Once per phone: enable
+developer mode on the [dashboard](https://dashboard.thelightphone.com), then in the
+Tool Manager's `Developer Keys` upload a text file holding the debug signing key's
+fingerprint, from [`light_debug_signing_key.txt`](docs/sideloading/light_debug_signing_key.txt)
+(see [sideloading](docs/sideloading)). Then, with the Tool Manager open, take the
+IP and the hex string after `#` from the URL it shows: for
+`https://10-0-0-5.my.local-ip.co:54449/#<hex>` the IP is `10.0.0.5`. The hex string
+is a fresh key on every Tool Manager restart.
 
 ```
-scripts/upload-to-device.sh 'https://10-0-0-5.my.local-ip.co:54449/#<token>'
+./gradlew :tool:uploadTool -Pdevice.ip=10.0.0.5 -Pdevice.token=<hex after #>
 ```
-
-Newer LightOS builds expose a `developer` root and are driven by upstream's
-`:tool:uploadTool` Gradle task instead; the script's header explains which
-generation each one speaks to.
 
 **For distribution.** Light builds community tools themselves, from a public git
 commit, against their own pinned copy of the SDK — see

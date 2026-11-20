@@ -5,7 +5,6 @@
       "Edit(/tool/src/test/**)",
       "Edit(/.claude/settings.json)",
       "Edit(/.claude/hooks/**)",
-      "Edit(/.githooks/**)",
       "Edit(/CLAUDE.md)"
     ]
   },

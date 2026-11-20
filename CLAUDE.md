@@ -10,12 +10,11 @@ Habits must behave. When one fails, the default assumption is that the app is wr
 - **A test may change for two reasons only:** the spec changed (the user asked for different
   behaviour), or the test itself is wrong (it checks something the app never promised). Before
   editing one, stop and tell the user which it is and why, with the evidence — then wait.
-- **Never change a test and the code it checks in the same commit.** The pre-commit hook in
-  `.githooks/` rejects that; don't bypass it (`--no-verify`, `core.hooksPath`,
-  `ALLOW_MIXED_EVAL_COMMIT`). Those are for the user alone.
-- Adding new tests or scenarios for new behaviour is welcome; commit them separately from the
-  implementation.
-- Don't edit the guards: `.claude/settings.json`, `.claude/hooks/`, `.githooks/`, this file.
+- **Keep the user in the loop.** Every change to a test or scenario, new ones included, needs
+  their approval. When reporting back, say which tests or scenarios changed and why, in plain
+  words, so the change is visible without reading the diff.
+- Adding new tests or scenarios for new behaviour is welcome.
+- Don't edit the guards: `.claude/settings.json`, `.claude/hooks/`, this file.
 
 Changes to all of these paths ask the user for approval first (`.claude/hooks/guard-evals.py`).
 

@@ -4,12 +4,11 @@
 Protected:
   eval/                  the emulator scenarios (eval/out/, the run output, is not)
   tool/src/test/         the unit tests
-  .claude/settings.json, .claude/hooks/, .githooks/, CLAUDE.md   the guards themselves
+  .claude/settings.json, .claude/hooks/, CLAUDE.md   the guards themselves
 
 File tools (Edit, Write, NotebookEdit) touching a protected path always ask. A shell command
-asks when it mentions a protected path (or runs inside one) and looks like it writes, or
-when it would skip or rewire the git hooks. Asking, not denying: changing a test is
-sometimes right, but never silently.
+asks when it mentions a protected path (or runs inside one) and looks like it writes.
+Asking, not denying: changing a test is sometimes right, but never silently.
 """
 
 import json
@@ -21,14 +20,13 @@ PROTECTED = [
     re.compile(r"(^|/)eval/(?!out(/|$))"),
     re.compile(r"(^|/)tool/src/test(/|$)"),
     re.compile(r"(^|/)\.claude/(settings\.json|hooks(/|$))"),
-    re.compile(r"(^|/)\.githooks(/|$)"),
     re.compile(r"(^|/)CLAUDE\.md$"),
 ]
 
 # In shell commands paths are often relative after a `cd`, so bare names count as mentions too.
 MENTION = re.compile(
     r"eval/(?!out\b)|\beval\b|src/test|Test\.kt\b|\bscenarios\.py\b|\bdevice\.py\b|\brun\.py\b"
-    r"|\.claude/(settings\.json|hooks)|guard-evals|\.githooks|CLAUDE\.md"
+    r"|\.claude/(settings\.json|hooks)|guard-evals|CLAUDE\.md"
 )
 
 WRITES = re.compile(
@@ -37,9 +35,6 @@ WRITES = re.compile(
     r"|\bchmod\b|\bchattr\b|\bln\b|\binstall\b|\bdd\b|\btouch\b|\bawk\b[^|;&]*-i\s*inplace"
     r"|open\([^)]*['\"][wax+]|write_text|write_bytes|\.write\(|>"
 )
-
-# Always ask: these get around the pre-commit check, whatever they mention.
-BYPASS = re.compile(r"--no-verify|\bgit\s+commit\b[^|;&]*\s-[a-zA-Z]*n[a-zA-Z]*\b|core\.hooksPath|ALLOW_MIXED_EVAL_COMMIT")
 
 HARMLESS_REDIRECTS = re.compile(r"\d?>&\d|&?\d?>\s*/dev/null|>\s*(\$S|/tmp/|\"?\$?TMPDIR)")
 
@@ -77,8 +72,6 @@ def main() -> None:
 
     if tool == "Bash":
         cmd = args.get("command", "")
-        if BYPASS.search(cmd):
-            ask("This command skips or rewires the git hooks that keep eval changes in their own commits.")
         rel_cwd = repo_relative(cwd, root, root) + "/"
         in_protected = any(p.search(rel_cwd) for p in PROTECTED)
         writes = WRITES.search(HARMLESS_REDIRECTS.sub("", cmd))

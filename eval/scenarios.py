@@ -148,6 +148,30 @@ def empty_state(c: Context):
     c.check(s.has("ADD"), "+ opens the naming screen", f"on screen: {s.labels()}")
 
 
+@scenario(
+    "With every habit archived, edit mode still reaches them",
+    seed=habit_state(H("Old", date(2026, 11, 1), done=[date(2026, 11, 17)], archived=date(2026, 11, 18))),
+    rubric=(
+        "The home screen when every habit has been archived. Pass if the message is legible and "
+        "centred, it explains that habits are archived rather than claiming there are none, and the "
+        "control it tells the user to tap is visible on this screen."
+    ),
+)
+def all_archived(c: Context):
+    s = c.d.launch()
+    c.check(s.has(contains="All habits are archived"), "the hint says the habits are archived", f"on screen: {s.labels()}")
+    c.check(s.has("Edit habits") and not s.has("Add habit"), "the pencil the hint names is on screen")
+    c.snap("all-archived")
+    s = c.d.tap("Edit habits")
+    unarchive, row = s.find("UNARCHIVE"), s.find("Old")
+    c.check(unarchive is not None and row is not None and unarchive.bounds[1] > row.bounds[1],
+            "edit mode lists Old with UNARCHIVE", f"on screen: {s.labels()}")
+    c.check(s.has("Add habit"), "+ is available in edit mode")
+    c.tap_row_action("Old", "UNARCHIVE")
+    s = c.d.tap("DONE")
+    c.expect_cell(s, "Old", date(2026, 11, 17), "done")
+
+
 @scenario("Adding a habit trims the name and puts it on the grid", seed=None)
 def add_habit(c: Context):
     c.d.launch()

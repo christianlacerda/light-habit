@@ -1,8 +1,8 @@
 [tool]
 id = "com.christianlacerda.habits"
 label = "Habits"
-versionCode = 3
-versionName = "1.0.0"
+versionCode = 4
+versionName = "1.1.0"
 permissions = []
 capabilities = []
 # No orientation lock. "portrait" letterboxes the tool on the LP3's near-square
